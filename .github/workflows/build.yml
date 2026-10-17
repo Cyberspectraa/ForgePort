@@ -59,6 +59,7 @@ jobs:
               config=json.loads(z.read("omniisle.client.mixins.json"))
               assert config["compatibilityLevel"]=="JAVA_17"
               assert config["refmap"]=="omniisle.refmap.json"
+              assert "WorldTypeEditorMixin" not in config.get("client", [])
               for p in names:
                   if p.endswith(".json"): json.loads(z.read(p))
           print("Validated Forge JAR and all JSON data resources:",jar)
@@ -102,6 +103,9 @@ jobs:
           import com.hack337.omniisle.client.IslandDraft;
           import java.nio.file.Path;
           import net.minecraft.client.Minecraft;
+          import net.minecraft.client.gui.components.Button;
+          import net.minecraft.client.gui.screens.worldselection.WorldCreationUiState;
+          import java.util.stream.Stream;
           import net.minecraft.client.gui.screens.TitleScreen;
           import net.minecraft.client.gui.screens.worldselection.CreateWorldScreen;
           import net.minecraftforge.api.distmarker.Dist;
@@ -119,12 +123,30 @@ jobs:
                       CreateWorldScreen.openFresh(mc, mc.screen);
                       System.out.println("OMNI_SMOKE_CREATE_WORLD_OPEN");
                   } else if (phase == 1 && mc.screen instanceof CreateWorldScreen worldScreen) {
-                      phase=2;
-                      mc.setScreen(new OmniIsleEditorScreen(worldScreen));
-                      System.out.println("OMNI_SMOKE_EDITOR_OPEN");
-                  } else if (phase == 2 && mc.screen instanceof OmniIsleEditorScreen) {
+                      var state = worldScreen.getUiState();
+                      var choice = Stream.concat(state.getNormalPresetList().stream(), state.getAltPresetList().stream())
+                          .filter(e -> e.preset() != null && e.preset().unwrapKey()
+                              .map(k -> "omniisle".equals(k.location().getNamespace()) && "omniisle".equals(k.location().getPath())).orElse(false))
+                          .findFirst();
+                      if (choice.isPresent()) {
+                          state.setWorldType(choice.get());
+                          phase=2;
+                          System.out.println("OMNI_SMOKE_PRESET_SELECTED");
+                      }
+                  } else if (phase == 2 && mc.screen instanceof CreateWorldScreen worldScreen) {
+                      for (var child : worldScreen.children()) {
+                          if (child instanceof Button button
+                              && button.visible && button.active
+                              && button.getMessage().getString().toLowerCase(java.util.Locale.ROOT).contains("omniisle")) {
+                              phase=3;
+                              button.onPress();
+                              System.out.println("OMNI_SMOKE_EDITOR_BUTTON_CLICKED");
+                              break;
+                          }
+                      }
+                  } else if (phase == 3 && mc.screen instanceof OmniIsleEditorScreen) {
                       if (++rendered >= 60) {
-                          phase=3;
+                          phase=4;
                           System.out.println("OMNI_SMOKE_EDITOR_RENDERED");
                           try {
                               WorldPackBuilder.export(Path.of("omni-smoke-datapacks"), new IslandDraft());
