@@ -28,6 +28,8 @@ jobs:
           test -f src/main/java/com/hack337/omniisle/OmniIsleIds.java
           rm -f src/main/resources/fabric.mod.json
           rm -f src/main/resources/META-INF/neoforge.mods.toml
+      - name: Restore SHA-256 verified Minecraft 1.20.1 release worldgen assets
+        run: python3 tools/restore_worldgen.py
       - name: Convert to native Forge 1.20.1
         run: python3 scripts/convert.py
       - name: Compile and reobfuscate

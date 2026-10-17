@@ -77,6 +77,7 @@ replace("worldgen/IslandDensityFunction.java",[
 replace("worldgen/OmniBiomeSource.java",[
     ("public static final MapCodec<OmniBiomeSource> CODEC = RecordCodecBuilder.mapCodec(",
      "public static final Codec<OmniBiomeSource> CODEC = RecordCodecBuilder.create("),
+    ("landBiomes.size() < 18", "landBiomes.size() < 17"),
     ("protected MapCodec<? extends BiomeSource> codec()","protected Codec<? extends BiomeSource> codec()"),
     ("key.identifier().getPath()","key.location().getPath()"),
     ("Registry.register(BuiltInRegistries.BIOME_SOURCE, OmniIsleIds.id(\"island_biomes\"), CODEC);","// registered on Forge mod event bus")
