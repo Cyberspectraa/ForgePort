@@ -39,6 +39,67 @@ jobs:
           name: OmniIsle-Forge-1.20.1
           path: build/libs/*.jar
           if-no-files-found: error
+      - name: Validate packaged resources
+        run: |
+          python3 - <<'PY'
+          import json,zipfile,glob
+          jar=glob.glob("build/libs/*.jar")[0]
+          with zipfile.ZipFile(jar) as z:
+              names=set(z.namelist())
+              required=["META-INF/mods.toml","omniisle.client.mixins.json",
+                "data/omniisle/worldgen/world_preset/omniisle.json",
+                "data/omniisle/worldgen/noise_settings/omni_terrain.json",
+                "com/hack337/omniisle/OmniIsleMod.class",
+                "com/hack337/omniisle/client/OmniIsleEditorScreen.class"]
+              for p in required: assert p in names, "Missing "+p
+              assert "fabric.mod.json" not in names
+              config=json.loads(z.read("omniisle.client.mixins.json"))
+              assert config["compatibilityLevel"]=="JAVA_17"
+              for p in names:
+                  if p.endswith(".json"): json.loads(z.read(p))
+          print("Validated Forge JAR and all JSON data resources:",jar)
+          PY
+      - name: Start dedicated Forge server with OmniIsle preset
+        run: |
+          mkdir -p run
+          printf 'eula=true\n' > run/eula.txt
+          printf 'level-type=omniisle:omniisle\nonline-mode=false\nview-distance=2\nsimulation-distance=2\nmax-tick-time=-1\n' > run/server.properties
+          set +e
+          timeout 180s gradle runServer --console=plain --no-daemon > server-smoke.log 2>&1 &
+          pid=$!
+          started=0
+          for n in $(seq 1 90); do
+            if grep -Eq 'Done \([0-9.]' server-smoke.log; then started=1; break; fi
+            if ! kill -0 "$pid" 2>/dev/null; then break; fi
+            sleep 2
+          done
+          kill "$pid" 2>/dev/null || true
+          wait "$pid" 2>/dev/null || true
+          set -e
+          tail -n 140 server-smoke.log
+          if [ "$started" != "1" ]; then echo 'OmniIsle dedicated server did not start successfully'; exit 1; fi
+          if grep -E 'Failed to load|Exception loading level|Errors in currently selected datapacks' server-smoke.log; then exit 1; fi
+          echo 'Dedicated server started with OmniIsle world preset'
+      - name: Upload server verification logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: OmniIsle-Forge-Server-Verification
+          path: server-smoke.log
+          if-no-files-found: ignore
+      - name: Upload reproducible full source
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: OmniIsle-Forge-1.20.1-Source
+          path: |
+            build.gradle
+            settings.gradle
+            gradle.properties
+            LICENSE
+            src/main/java
+            src/main/resources
+            scripts/convert.py
       - name: Upload project sources on failure
         if: failure()
         uses: actions/upload-artifact@v4
