@@ -109,7 +109,7 @@ jobs:
                   if (event.phase != TickEvent.Phase.END) return;
                   Minecraft mc = Minecraft.getInstance();
                   if (++ticks % 100 == 0) System.out.println("OMNI_SMOKE_TICK " + ticks + " screen=" + (mc.screen == null ? "null" : mc.screen.getClass().getSimpleName()));
-                  if (phase == 0 && mc.screen instanceof TitleScreen) {
+                  if (phase == 0 && mc.screen != null && (mc.screen instanceof TitleScreen || mc.screen.getClass().getSimpleName().equals("AccessibilityOnboardingScreen"))) {
                       phase=1;
                       CreateWorldScreen.openFresh(mc, mc.screen);
                       System.out.println("OMNI_SMOKE_CREATE_WORLD_OPEN");
