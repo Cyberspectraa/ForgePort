@@ -189,4 +189,7 @@ versionRange="[1.20.1,1.20.2)"
 ordering="NONE"
 side="BOTH"
 """)
+mixins=RES/"omniisle.client.mixins.json"
+if mixins.exists():
+    mixins.write_text(mixins.read_text().replace("JAVA_21", "JAVA_17"))
 print("Native Forge transformation applied")
