@@ -164,7 +164,7 @@ jobs:
           if grep -E 'MixinApplyError|InvalidInjectionException|Failed to apply mixin|OMNI_SMOKE_EXPORT_FAILED' client-smoke.log; then exit 1; fi
           python3 - <<'PY'
           import json,zipfile
-          p='omni-smoke-datapacks/omniisle-generated.zip'
+          p='run/omni-smoke-datapacks/omniisle-generated.zip'
           with zipfile.ZipFile(p) as z:
               names=set(z.namelist())
               assert 'pack.mcmeta' in names
