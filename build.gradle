@@ -1,0 +1,23 @@
+plugins { id 'net.minecraftforge.gradle' version '[6.0,6.2)' }
+group = 'com.hack337'
+version = project.mod_version
+base { archivesName = 'OmniIsle-Forge-1.20.1' }
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+minecraft {
+    mappings channel: 'official', version: minecraft_version
+    copyIdeResources = true
+    runs {
+       client { workingDirectory project.file('run'); mods { omniisle { source sourceSets.main } } }
+       server { workingDirectory project.file('run'); args '--nogui'; mods { omniisle { source sourceSets.main } } }
+    }
+}
+repositories { mavenCentral() }
+dependencies { minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}" }
+processResources {
+    inputs.property 'mod_version', project.mod_version
+    filesMatching('META-INF/mods.toml') { expand mod_version: project.mod_version }
+}
+jar {
+    manifest { attributes('Specification-Title':'OmniIsle','Implementation-Version':project.version) }
+    finalizedBy 'reobfJar'
+}

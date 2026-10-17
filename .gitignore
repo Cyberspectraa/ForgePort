@@ -1,0 +1,10 @@
+.gradle/
+build/
+run/
+logs/
+.idea/
+*.iml
+# Original resources extracted from upstream 1.20.1 release
+src/main/resources/data/omniisle/worldgen/
+src/main/resources/data/minecraft/tags/worldgen/world_preset/normal.json
+src/main/resources/assets/omniisle/lang/

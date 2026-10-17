@@ -1,0 +1,1 @@
+{"type":"forge:add_spawns","biomes":"minecraft:frozen_river","spawners":[{"type":"minecraft:salmon","weight":18,"minCount":1,"maxCount":4}]}

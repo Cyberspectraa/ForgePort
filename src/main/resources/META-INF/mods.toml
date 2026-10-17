@@ -1,0 +1,21 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="GPL-3.0-only (upstream repository; original 1.20.1 JAR has inconsistent metadata)"
+[[mods]]
+modId="omniisle"
+version="${mod_version}"
+displayName="OmniIsle - Forge Port (Development)"
+authors="Hack337 (original), ForgePort contributors"
+description="Native Forge port in progress. Some upstream features are not yet implemented."
+[[dependencies.omniisle]]
+modId="forge"
+mandatory=true
+versionRange="[47,)"
+ordering="NONE"
+side="BOTH"
+[[dependencies.omniisle]]
+modId="minecraft"
+mandatory=true
+versionRange="[1.20.1,1.20.2)"
+ordering="NONE"
+side="BOTH"
