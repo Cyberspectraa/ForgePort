@@ -9,6 +9,8 @@ import re
 ROOT=Path("src/main")
 JAVA=ROOT/"java/com/hack337/omniisle"
 RES=ROOT/"resources"
+# Remove abandoned prototype entry point to prevent duplicate mods.
+(JAVA/"OmniIsleForge.java").unlink(missing_ok=True)
 
 def rewrite(rel, f):
     p=JAVA/rel
@@ -132,6 +134,9 @@ public final class TargetPlatform {
 }
 """)
 replace("client/OmniIsleEditorScreen.java",[
+    ("public final class OmniIsleEditorScreen extends Screen {", "public final class OmniIsleEditorScreen extends Screen {\n    private int omniMouseX, omniMouseY;"),
+    ("super.render(context, mouseX, mouseY, delta);", "omniMouseX = mouseX; omniMouseY = mouseY;\n        super.render(context, mouseX, mouseY, delta);"),
+    ("drawChoiceList(context, mouseX, mouseY)", "drawChoiceList(context, omniMouseX, omniMouseY)"),
     ("ResourceLocation.fromNamespaceAndPath(", "new ResourceLocation("),
     ("double horizontalAmount, double verticalAmount)", "double verticalAmount)"),
     ("super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount)",
@@ -143,6 +148,9 @@ replace("client/OmniIsleEditorScreen.java",[
 ])
 # GUI dimensions and drawing methods are mostly unchanged from 1.21.1, except background API.
 replace("client/BiomeSelectionScreen.java",[
+    ("public final class BiomeSelectionScreen extends Screen {", "public final class BiomeSelectionScreen extends Screen {\n    private int omniMouseX, omniMouseY;"),
+    ("super.render(context, mouseX, mouseY, delta);", "omniMouseX = mouseX; omniMouseY = mouseY;\n        super.render(context, mouseX, mouseY, delta);"),
+    ("renderList(context, mouseX, mouseY)", "renderList(context, omniMouseX, omniMouseY)"),
     ("double horizontalAmount, double verticalAmount)", "double verticalAmount)"),
     ("super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount)",
      "super.mouseScrolled(mouseX, mouseY, verticalAmount)"),
