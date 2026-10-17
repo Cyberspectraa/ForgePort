@@ -1,23 +1,20 @@
 plugins { id 'net.minecraftforge.gradle' version '[6.0,6.2)' }
 group = 'com.hack337'
-version = project.mod_version
+version = '0.5.0-forge'
 base { archivesName = 'OmniIsle-Forge-1.20.1' }
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 minecraft {
-    mappings channel: 'official', version: minecraft_version
+    mappings channel: 'official', version: '1.20.1'
     copyIdeResources = true
     runs {
-       client { workingDirectory project.file('run'); mods { omniisle { source sourceSets.main } } }
-       server { workingDirectory project.file('run'); args '--nogui'; mods { omniisle { source sourceSets.main } } }
+        client { workingDirectory project.file('run'); mods { omniisle { source sourceSets.main } } }
+        server { workingDirectory project.file('run'); args '--nogui'; mods { omniisle { source sourceSets.main } } }
     }
 }
 repositories { mavenCentral() }
-dependencies { minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}" }
-processResources {
-    inputs.property 'mod_version', project.mod_version
-    filesMatching('META-INF/mods.toml') { expand mod_version: project.mod_version }
-}
+dependencies { minecraft 'net.minecraftforge:forge:1.20.1-47.3.0' }
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8'; options.release = 17 }
 jar {
-    manifest { attributes('Specification-Title':'OmniIsle','Implementation-Version':project.version) }
+    manifest { attributes 'MixinConfigs': 'omniisle.client.mixins.json' }
     finalizedBy 'reobfJar'
 }

@@ -1,8 +1,9 @@
 pluginManagement {
     repositories {
         maven { url = 'https://maven.minecraftforge.net/' }
+        maven { url = 'https://repo.spongepowered.org/maven' }
         gradlePluginPortal()
         mavenCentral()
     }
 }
-rootProject.name='OmniIsleForge'
+rootProject.name = 'OmniIsle-Forge'

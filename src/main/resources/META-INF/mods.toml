@@ -1,12 +1,12 @@
 modLoader="javafml"
 loaderVersion="[47,)"
-license="GPL-3.0-only (upstream repository; original 1.20.1 JAR has inconsistent metadata)"
+license="GPL-3.0-only"
 [[mods]]
 modId="omniisle"
-version="${mod_version}"
-displayName="OmniIsle - Forge Port (Development)"
-authors="Hack337 (original), ForgePort contributors"
-description="Native Forge port in progress. Some upstream features are not yet implemented."
+version="0.5.0-forge"
+displayName="OmniIsle Forge 1.20.1 (unofficial port)"
+authors="Hack337 (original), Cyberspectraa (Forge port)"
+description='''An island world preset with biomes, structures and custom editing.'''
 [[dependencies.omniisle]]
 modId="forge"
 mandatory=true
