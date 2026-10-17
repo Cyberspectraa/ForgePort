@@ -103,12 +103,12 @@ jobs:
           import net.minecraftforge.event.TickEvent;
           import net.minecraftforge.eventbus.api.SubscribeEvent;
           import net.minecraftforge.fml.common.Mod;
-          @Mod.EventBusSubscriber(modid="omniisle", value=Dist.CLIENT, bus=Mod.EventBusSubscriber.Bus.FORGE)
           public final class ClientSmokeHarness {
-              private static int phase = 0, rendered = 0;
+              private static int phase = 0, rendered = 0, ticks = 0;
               @SubscribeEvent public static void onTick(TickEvent.ClientTickEvent event) {
                   if (event.phase != TickEvent.Phase.END) return;
                   Minecraft mc = Minecraft.getInstance();
+                  if (++ticks % 100 == 0) System.out.println("OMNI_SMOKE_TICK " + ticks + " screen=" + (mc.screen == null ? "null" : mc.screen.getClass().getSimpleName()));
                   if (phase == 0 && mc.screen instanceof TitleScreen) {
                       phase=1;
                       CreateWorldScreen.openFresh(mc, mc.screen);
@@ -126,6 +126,14 @@ jobs:
               }
           }
           JAVA
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('src/main/java/com/hack337/omniisle/OmniIsleMod.java')
+          s=p.read_text()
+          k='MinecraftForge.EVENT_BUS.addListener(OmniCommands::registerCommands);'
+          assert k in s
+          p.write_text(s.replace(k,k+' MinecraftForge.EVENT_BUS.addListener(ClientSmokeHarness::onTick);'))
+          PY
           set +e
           timeout 180s xvfb-run -a -s '-screen 0 1280x720x24' gradle runClient --console=plain --no-daemon > client-smoke.log 2>&1 &
           client_pid=$!
