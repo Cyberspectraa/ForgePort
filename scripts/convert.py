@@ -161,7 +161,14 @@ replace("client/BiomeSelectionScreen.java",[
 ])
 replace("mixin/client/WorldTypeEditorMixin.java",[
     ("ResourceLocation.fromNamespaceAndPath(", "new ResourceLocation("),
-    ("@Inject(method = \"lambda$new$3\", at = @At(\"TAIL\"))", "@Inject(method = \"lambda$new$3\", at = @At(\"TAIL\"), require = 0)")
+    ("private void omniisle$initializeButton(CreateWorldScreen screen, CallbackInfo ci) {",
+     "private void omniisle$initializeButton(CallbackInfo ci) {"),
+    ("omniisle$updateButton(screen.getUiState());", "omniisle$updateButton(this$0.getUiState());"),
+    ("@Inject(method = \"lambda$new$3\", at = @At(\"TAIL\"))",
+     "@Inject(method = \"tick\", at = @At(\"TAIL\"))"),
+    ("private void omniisle$enableEditor(WorldCreationUiState creator, CallbackInfo ci) {",
+     "private void omniisle$enableEditor(CallbackInfo ci) {"),
+    ("omniisle$updateButton(creator);", "omniisle$updateButton(this$0.getUiState());")
 ])
 # World creation bridge methods use this signature in 1.20.1.
 # Resource mixin config comes from exact 1.20.1 upstream branch.
