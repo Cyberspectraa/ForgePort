@@ -199,5 +199,8 @@ side="BOTH"
 """)
 mixins=RES/"omniisle.client.mixins.json"
 if mixins.exists():
-    mixins.write_text(mixins.read_text().replace("JAVA_21", "JAVA_17"))
+    import json
+    cfg=json.loads(mixins.read_text().replace("JAVA_21", "JAVA_17"))
+    cfg["refmap"]="omniisle.refmap.json"
+    mixins.write_text(json.dumps(cfg, indent=2)+"\n")
 print("Native Forge transformation applied")

@@ -52,11 +52,13 @@ jobs:
                 "data/omniisle/worldgen/world_preset/omniisle.json",
                 "data/omniisle/worldgen/noise_settings/omni_terrain.json",
                 "com/hack337/omniisle/OmniIsleMod.class",
-                "com/hack337/omniisle/client/OmniIsleEditorScreen.class"]
+                "com/hack337/omniisle/client/OmniIsleEditorScreen.class",
+                "omniisle.refmap.json"]
               for p in required: assert p in names, "Missing "+p
               assert "fabric.mod.json" not in names
               config=json.loads(z.read("omniisle.client.mixins.json"))
               assert config["compatibilityLevel"]=="JAVA_17"
+              assert config["refmap"]=="omniisle.refmap.json"
               for p in names:
                   if p.endswith(".json"): json.loads(z.read(p))
           print("Validated Forge JAR and all JSON data resources:",jar)
