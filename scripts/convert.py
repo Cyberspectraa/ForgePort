@@ -67,6 +67,58 @@ public final class OmniIsleMod {
 }
 """,encoding="utf-8")
 
+# Use Forge's public screen-init and render events for the editor entry point.
+# This replaces version-fragile injections into the private WorldTab class.
+(JAVA/"mixin/client/WorldTypeEditorMixin.java").unlink(missing_ok=True)
+client_hooks=JAVA/"client/ForgeEditorButton.java"
+client_hooks.write_text("""package com.hack337.omniisle.client;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.screens.worldselection.CreateWorldScreen;
+import net.minecraft.client.gui.screens.worldselection.WorldCreationUiState;
+import net.minecraft.network.chat.Component;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.ScreenEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import java.util.Map;
+import java.util.WeakHashMap;
+
+@Mod.EventBusSubscriber(modid="omniisle", value=Dist.CLIENT, bus=Mod.EventBusSubscriber.Bus.FORGE)
+public final class ForgeEditorButton {
+    private static final Map<CreateWorldScreen, Button> BUTTONS = new WeakHashMap<>();
+    private ForgeEditorButton() {}
+
+    @SubscribeEvent
+    public static void addButton(ScreenEvent.Init.Post event) {
+        if (!(event.getScreen() instanceof CreateWorldScreen screen)) return;
+        Button button = Button.builder(Component.translatable("omniisle.editor.open"),
+                b -> Minecraft.getInstance().setScreen(new OmniIsleEditorScreen(screen)))
+            .bounds(Math.max(8, screen.width - 186), Math.max(35, screen.height - 63), 174, 20)
+            .build();
+        button.visible = false;
+        button.active = false;
+        event.addListener(button);
+        BUTTONS.put(screen, button);
+    }
+
+    @SubscribeEvent
+    public static void updateButton(ScreenEvent.Render.Post event) {
+        if (!(event.getScreen() instanceof CreateWorldScreen screen)) return;
+        Button button = BUTTONS.get(screen);
+        if (button == null) return;
+        WorldCreationUiState state = screen.getUiState();
+        boolean selected = state.getWorldType().preset() != null
+            && state.getWorldType().preset().unwrapKey()
+                .map(key -> "omniisle".equals(key.location().getNamespace())
+                    && "omniisle".equals(key.location().getPath()))
+                .orElse(false);
+        button.active = selected;
+        button.visible = selected;
+    }
+}
+""",encoding="utf-8")
+
 replace("OmniIsleIds.java",[
     ("ResourceLocation.fromNamespaceAndPath(MOD_ID, path)","new ResourceLocation(MOD_ID, path)")
 ])
@@ -202,5 +254,7 @@ if mixins.exists():
     import json
     cfg=json.loads(mixins.read_text().replace("JAVA_21", "JAVA_17"))
     cfg["refmap"]="omniisle.refmap.json"
+    cfg["minVersion"]="0.8.5"
+    cfg["client"]=[c for c in cfg.get("client",[]) if c != "WorldTypeEditorMixin"]
     mixins.write_text(json.dumps(cfg, indent=2)+"\n")
 print("Native Forge transformation applied")
