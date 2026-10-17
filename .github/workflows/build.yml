@@ -89,6 +89,67 @@ jobs:
           name: OmniIsle-Forge-Server-Verification
           path: server-smoke.log
           if-no-files-found: ignore
+      - name: Launch client and render original island editor
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xvfb libgl1-mesa-dri libglx-mesa0 > /dev/null
+          cat > src/main/java/com/hack337/omniisle/ClientSmokeHarness.java <<'JAVA'
+          package com.hack337.omniisle;
+          import com.hack337.omniisle.client.OmniIsleEditorScreen;
+          import net.minecraft.client.Minecraft;
+          import net.minecraft.client.gui.screens.TitleScreen;
+          import net.minecraft.client.gui.screens.worldselection.CreateWorldScreen;
+          import net.minecraftforge.api.distmarker.Dist;
+          import net.minecraftforge.event.TickEvent;
+          import net.minecraftforge.eventbus.api.SubscribeEvent;
+          import net.minecraftforge.fml.common.Mod;
+          @Mod.EventBusSubscriber(modid="omniisle", value=Dist.CLIENT, bus=Mod.EventBusSubscriber.Bus.FORGE)
+          public final class ClientSmokeHarness {
+              private static int phase = 0, rendered = 0;
+              @SubscribeEvent public static void onTick(TickEvent.ClientTickEvent event) {
+                  if (event.phase != TickEvent.Phase.END) return;
+                  Minecraft mc = Minecraft.getInstance();
+                  if (phase == 0 && mc.screen instanceof TitleScreen) {
+                      phase=1;
+                      CreateWorldScreen.openFresh(mc, mc.screen);
+                      System.out.println("OMNI_SMOKE_CREATE_WORLD_OPEN");
+                  } else if (phase == 1 && mc.screen instanceof CreateWorldScreen worldScreen) {
+                      phase=2;
+                      mc.setScreen(new OmniIsleEditorScreen(worldScreen));
+                      System.out.println("OMNI_SMOKE_EDITOR_OPEN");
+                  } else if (phase == 2 && mc.screen instanceof OmniIsleEditorScreen) {
+                      if (++rendered >= 60) {
+                          phase=3;
+                          System.out.println("OMNI_SMOKE_EDITOR_RENDERED");
+                      }
+                  }
+              }
+          }
+          JAVA
+          set +e
+          timeout 180s xvfb-run -a -s '-screen 0 1280x720x24' gradle runClient --console=plain --no-daemon > client-smoke.log 2>&1 &
+          client_pid=$!
+          passed=0
+          for n in $(seq 1 90); do
+            if grep -q 'OMNI_SMOKE_EDITOR_RENDERED' client-smoke.log; then passed=1; break; fi
+            if ! kill -0 "$client_pid" 2>/dev/null; then break; fi
+            sleep 2
+          done
+          kill "$client_pid" 2>/dev/null || true
+          wait "$client_pid" 2>/dev/null || true
+          rm -f src/main/java/com/hack337/omniisle/ClientSmokeHarness.java
+          set -e
+          tail -n 140 client-smoke.log
+          if [ "$passed" != "1" ]; then echo 'World creation editor did not finish loading'; exit 1; fi
+          if grep -E 'MixinApplyError|InvalidInjectionException|Failed to apply mixin' client-smoke.log; then exit 1; fi
+          echo 'Native Forge client successfully opened and rendered the island editor'
+      - name: Upload client validation log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: OmniIsle-Forge-Client-Verification
+          path: client-smoke.log
+          if-no-files-found: ignore
       - name: Upload reproducible full source
         if: success()
         uses: actions/upload-artifact@v4
