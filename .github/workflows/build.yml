@@ -183,6 +183,43 @@ jobs:
           name: OmniIsle-Forge-Client-Verification
           path: client-smoke.log
           if-no-files-found: ignore
+      - name: Install production Forge server and load release JAR
+        run: |
+          mkdir -p prod-server/mods
+          cp build/libs/OmniIsle-Forge-1.20.1-0.5.0-forge.jar prod-server/mods/
+          curl -fSL --retry 3 --connect-timeout 30 \
+            https://maven.minecraftforge.net/net/minecraftforge/forge/1.20.1-47.3.0/forge-1.20.1-47.3.0-installer.jar \
+            -o prod-server/forge-installer.jar
+          (cd prod-server && java -jar forge-installer.jar --installServer) > prod-installer.log 2>&1
+          test -f prod-server/run.sh
+          printf 'eula=true\n' > prod-server/eula.txt
+          printf 'level-type=omniisle:omniisle\nonline-mode=false\nview-distance=2\nsimulation-distance=2\nmax-tick-time=-1\n' > prod-server/server.properties
+          (
+            cd prod-server
+            timeout 240s bash ./run.sh nogui > ../prod-server.log 2>&1
+          ) &
+          pid=$!
+          ready=0
+          for n in $(seq 1 120); do
+            if grep -Eq 'Done \([0-9.]' prod-server.log 2>/dev/null; then ready=1; break; fi
+            if ! kill -0 "$pid" 2>/dev/null; then break; fi
+            sleep 2
+          done
+          kill "$pid" 2>/dev/null || true
+          wait "$pid" 2>/dev/null || true
+          tail -n 120 prod-server.log
+          if [ "$ready" != "1" ]; then echo 'Installed Forge server failed to load native release JAR'; exit 1; fi
+          if grep -E 'Failed to load|Exception loading level|Errors in currently selected datapacks' prod-server.log; then exit 1; fi
+          echo "Production Forge 1.20.1 server loaded release JAR and generated OmniIsle"
+      - name: Upload production server log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: OmniIsle-Forge-Installed-Server-Verification
+          path: |
+            prod-installer.log
+            prod-server.log
+          if-no-files-found: ignore
       - name: Upload reproducible full source
         if: success()
         uses: actions/upload-artifact@v4
