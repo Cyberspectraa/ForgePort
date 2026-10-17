@@ -188,7 +188,7 @@ jobs:
           mkdir -p prod-server/mods
           cp build/libs/OmniIsle-Forge-1.20.1-0.5.0-forge.jar prod-server/mods/
           curl -fSL --retry 3 --connect-timeout 30 \
-            https://maven.minecraftforge.net/net/minecraftforge/forge/1.20.1-47.3.0/forge-1.20.1-47.3.0-installer.jar \
+            https://maven.minecraftforge.net/net/minecraftforge/forge/1.20.1-47.4.10/forge-1.20.1-47.4.10-installer.jar \
             -o prod-server/forge-installer.jar
           (cd prod-server && java -jar forge-installer.jar --installServer) > prod-installer.log 2>&1
           test -f prod-server/run.sh
