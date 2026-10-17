@@ -1,0 +1,49 @@
+name: Build native Forge 1.20.1
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Fetch exact upstream sources
+        run: |
+          git clone --depth 1 --branch neoforge/1.21.1 https://github.com/y9hack337/OmniIsle.git /tmp/omni-neo
+          git clone --depth 1 --branch fabric/1.20.1 https://github.com/y9hack337/OmniIsle.git /tmp/omni-fabric
+          mkdir -p src/main
+          cp -R /tmp/omni-neo/src/main/java src/main/java
+          cp -R /tmp/omni-fabric/src/main/resources src/main/resources
+          rm -f src/main/resources/fabric.mod.json
+          rm -f src/main/resources/META-INF/neoforge.mods.toml
+      - name: Convert to native Forge 1.20.1
+        run: python3 scripts/convert.py
+      - name: Compile and reobfuscate
+        run: gradle build --stacktrace --console=plain --no-daemon
+      - name: Upload Forge mod JAR
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: OmniIsle-Forge-1.20.1
+          path: build/libs/*.jar
+          if-no-files-found: error
+      - name: Upload project sources on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: OmniIsle-Forge-Debug-Source
+          path: |
+            src/main/java
+            src/main/resources
+          retention-days: 7
