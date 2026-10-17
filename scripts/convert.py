@@ -148,7 +148,7 @@ replace("client/OmniIsleEditorScreen.java",[
 ])
 # GUI dimensions and drawing methods are mostly unchanged from 1.21.1, except background API.
 replace("client/BiomeSelectionScreen.java",[
-    ("final class BiomeSelectionScreen extends Screen {", "final class BiomeSelectionScreen extends Screen {\n    private int omniMouseX, omniMouseY;\\n    @Override public void render(GuiGraphics g, int mx, int my, float p) {\\n        omniMouseX=mx; omniMouseY=my; super.render(g,mx,my,p);\\n    }"),
+    ("final class BiomeSelectionScreen extends Screen {", "final class BiomeSelectionScreen extends Screen {\n    private int omniMouseX, omniMouseY;\n    @Override public void render(GuiGraphics g, int mx, int my, float p) {\n        omniMouseX=mx; omniMouseY=my; super.render(g,mx,my,p);\n    }"),
     ("super.render(context, mouseX, mouseY, delta);", "omniMouseX = mouseX; omniMouseY = mouseY;\n        super.render(context, mouseX, mouseY, delta);"),
     ("renderList(context, mouseX, mouseY)", "renderList(context, omniMouseX, omniMouseY)"),
     ("double horizontalAmount, double verticalAmount)", "double verticalAmount)"),
