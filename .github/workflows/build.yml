@@ -22,9 +22,10 @@ jobs:
         run: |
           git clone --depth 1 --branch neoforge/1.21.1 https://github.com/y9hack337/OmniIsle.git /tmp/omni-neo
           git clone --depth 1 --branch fabric/1.20.1 https://github.com/y9hack337/OmniIsle.git /tmp/omni-fabric
-          mkdir -p src/main
-          cp -R /tmp/omni-neo/src/main/java src/main/java
-          cp -R /tmp/omni-fabric/src/main/resources src/main/resources
+          mkdir -p src/main/java src/main/resources
+          cp -R /tmp/omni-neo/src/main/java/. src/main/java/
+          cp -R /tmp/omni-fabric/src/main/resources/. src/main/resources/
+          test -f src/main/java/com/hack337/omniisle/OmniIsleIds.java
           rm -f src/main/resources/fabric.mod.json
           rm -f src/main/resources/META-INF/neoforge.mods.toml
       - name: Convert to native Forge 1.20.1
