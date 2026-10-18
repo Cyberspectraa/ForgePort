@@ -22,7 +22,23 @@ The Forge world-creation screen must select the freshly reloaded OmniIsle preset
 
 The automated client test disables Plains, Beach, Deep Ocean, Frozen River and Dripstone Caves, exports the customized datapack, applies it in the real Create World screen, and checks that the selected biome source and sampled generation do not return the disabled biomes. This test passed on Forge 47.4.10.
 
-**Create a new test world** to evaluate biome selection changes. Already-generated chunks are not rewritten. Keep at least one biome enabled in each category. Vanilla biome checkboxes do not control biomes added by other mods.
+**Create a new test world** to evaluate biome selection changes. Already-generated chunks are not rewritten. Keep at least one biome enabled in each category.
+
+## Adding biomes from other Forge mods
+
+The island editor now has **Biomes | Structures | Mods** tabs. Choose **Mods** to open the modded-biome selection page. It discovers biome IDs in the Minecraft world-creation registry, including data-driven biomes installed by Forge mods. Select a terrain category (Land, Shore, Ocean, River, or Cave) and tick the biomes to generate. Mod biomes are opt-in, and each is assigned to at most one category.
+
+When you press **Done**, OmniIsle writes the selected registry IDs into the generated **per-world datapack**. The server biome source uses deterministic regions for the selected modded biomes, and only enabled biomes are advertised to worldgen and other mods. This affects both the island layout preview (modded regions use a distinctive preview colour) and actual generation. You must keep the mod that owns each selected biome installed in the world: missing registry IDs can prevent world loading.
+
+Custom biomes do not necessarily have terrain-aware climate placement rules of their originating mod. Assign each custom biome to the appropriate category; OmniIsle's own region sampling decides where within that category it appears.
+
+## Biome-specific structures
+
+The Forge port checks a structure's allowed biome registry entries against the biomes enabled in the OmniIsle world. If **none** of the structure's permitted biomes remain enabled, its start is rejected. OmniIsle's custom fixed vanilla structure sets are also switched off when their explicitly required biome is disabled (and Ancient Cities require Deep Dark to be enabled). Land-only structure footprint protections for Ice and Fire are preserved. Modded ocean structures are not indiscriminately filtered out.
+
+This applies to **registered Minecraft structures**. Mods that generate structures through features, block placement callbacks, or custom systems may require separate integrations. Already-generated chunks and structure starts are not retroactively removed.
+
+For release validation, the CI client loads a test-only custom biome, selects it, verifies its datapack export and real biome-source sampling, and checks that a biome-dependent structure is disabled when its required biome is switched off. The test biome is not included in the distributable JAR.
 
 ## Installation / support
 
