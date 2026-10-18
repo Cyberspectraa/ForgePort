@@ -219,8 +219,8 @@ jobs:
                                   throw new AssertionError("Could not select installed mod biome");
                               if (!restricted.enabledBiomeIds(BiomePreview.Category.LAND).contains("omnitest:glowing_grove"))
                                   throw new AssertionError("Mod biome missing from editor selection");
-                              // The desert-pyramid slot is keyed to BADLANDS in the port.
-                              if (!restricted.toggleBiome(BiomePreview.Type.BADLANDS))
+                              // Desert pyramids may only start when Desert is enabled.
+                              if (!restricted.toggleBiome(BiomePreview.Type.DESERT))
                                   throw new AssertionError("Could not disable structure-required biome");
                               var registry = creationScreen.getUiState().getSettings().worldgenRegistries()
                                   .compositeAccess().registryOrThrow(net.minecraft.core.registries.Registries.BIOME);
@@ -268,7 +268,7 @@ jobs:
                           if (!possible.contains("omnitest:glowing_grove"))
                               throw new AssertionError("Selected modded biome did not survive world preset reload");
                           for (String forbidden : java.util.List.of("minecraft:plains", "minecraft:beach",
-                                  "minecraft:deep_ocean", "minecraft:frozen_river", "minecraft:dripstone_caves", "minecraft:badlands")) {
+                                  "minecraft:deep_ocean", "minecraft:frozen_river", "minecraft:dripstone_caves", "minecraft:desert")) {
                               if (possible.contains(forbidden))
                                   throw new AssertionError("Disabled biome still possible after reload: " + forbidden);
                           }
