@@ -23,6 +23,25 @@ The port must preserve the original island generation, coastline/deep-ocean tran
 3. Create a **new test world** with world type OmniIsle; back up existing worlds before testing.
 4. This release was automatically validated in Forge development client and installed dedicated-server environments. **Normal Windows launcher and full modpack compatibility are not yet proven.** For a Windows launch failure, attach the latest complete `logs/debug.log` and the crash report or launcher exit/console log; logs that stop before mod discovery cannot establish which mod failed.
 
+## Modded structure placement (Forge 1.20.1)
+
+On an OmniIsle world, **land-only structures** can otherwise select starting chunks too close to the island coastline and carve into the surrounding sea. The native Forge port now supports the datapack structure tag \`#omniisle:land_only\`. Structures in this tag are rejected at start-generation time unless the start and eight points in a 96-block surrounding footprint are all on inland terrain. This is world-specific: it follows the current OmniIsle island preset, including customized editor masks.
+
+Ice and Fire Community Edition land structures are included by default (dragon caves, roosts, cyclops/hydra caves, gorgon temples, graveyards, mausoleums and pixie villages). Ocean-specific features such as siren islands are deliberately **not** included. The IDs are optional; Ice and Fire is not a required dependency.
+
+For another mod's land structures, include its **structure registry IDs** in \`data/omniisle/tags/worldgen/structure/land_only.json\` in your own datapack (do not replace the default list unless intentionally changing it). Example:
+
+\`\`\`json
+{
+  "replace": false,
+  "values": [
+    {"id": "anothermod:land_ruin", "required": false}
+  ]
+}
+\`\`\`
+
+This prevents invalid starts; it **does not relocate** structures from ocean chunks to the island and cannot fix already generated chunks. Larger structures may require more than the current footprint margin, and mod-specific features not registered as Minecraft structures need separate integration. Keep backups and test with a new world or newly generated chunks.
+
 ## Licensing
 
 Upstream GitHub source is distributed under GPL-3.0. Retain copyright notices and the GPL license when porting. The separately distributed 1.20.1 Fabric JAR carries a different license declaration in its metadata, so maintain GPL compliance for public distribution and check upstream licensing details. This is an unofficial port.
