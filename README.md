@@ -32,6 +32,18 @@ When you press **Done**, OmniIsle writes the selected registry IDs into the gene
 
 Custom biomes do not necessarily have terrain-aware climate placement rules of their originating mod. Assign each custom biome to the appropriate category; OmniIsle's own region sampling decides where within that category it appears.
 
+## Biome percentages and approximate distribution
+
+Open the OmniIsle island editor, select **Mods**, and choose **Biome balance / percentages**. This page lists **every enabled vanilla and modded biome**. Choose Land, Shore, Ocean, River, or Cave; click a biome; use **-5%, -1%, +1%, +5%** to change its **target share within that category**. The shares of the other enabled biomes in that category are normalized automatically to total 100%. A biome must be enabled before it appears; unchecking it removes it from generation. Changes are stored in the world-specific generated datapack as \`biome_weights\`, and carried forward if you reopen the editor.
+
+**Important:** percentages are *statistical targets*, not a pixel-perfect land-area guarantee. OmniIsle selects organic regions deterministically (seed and coordinates), and island shape, irregular coastlines, cave depth, and finite region counts produce variation. For example, a land biome set to 65% should generally occupy more inland area than a biome set to 10%, but individual maps won't be exact. When no percentage has been adjusted for a category, its original climate-based distribution remains in use.
+
+## Cross-mod compatibility boundaries
+
+* Registered biomes from installed datapacks/mods are found in the worldgen biome registry and available for opt-in. The biome's owning mod or datapack **must remain installed** for the saved world to load.
+* Registered Minecraft structures are checked against their biome registry holder sets. If no permitted biome is active, they cannot start. Structures whose currently permitted biomes are **land only** additionally get a 48-block coastline margin; larger structures can opt in to the existing 96-block \`#omniisle:land_only\` tag. Mixed-biome and aquatic structures are not automatically relocated to land.
+* "Universal" here refers to conventional Minecraft/Forge registry-driven biome and structure generation. A mod using custom feature generation, direct block placement, custom dimension logic, or special spawn-event placement may bypass these hooks and can require its own integration. This version does **not** claim arbitrary third-party mod compatibility without in-game testing. Already generated chunks are unaffected.
+
 ## Biome-specific structures
 
 The Forge port checks a structure's allowed biome registry entries against the biomes enabled in the OmniIsle world. If **none** of the structure's permitted biomes remain enabled, its start is rejected. OmniIsle's custom fixed vanilla structure sets are also switched off when their explicitly required biome is disabled (and Ancient Cities require Deep Dark to be enabled). Land-only structure footprint protections for Ice and Fire are preserved. Modded ocean structures are not indiscriminately filtered out.
