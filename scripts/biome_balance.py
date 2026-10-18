@@ -198,6 +198,7 @@ public final class BiomeShareSampler {
         double best = Double.POSITIVE_INFINITY;
         int result = 0;
         long closestSeed = 0;
+        int closestX = cx, closestZ = cz;
         for (int zz = cz - 1; zz <= cz + 1; zz++) {
             for (int xx = cx - 1; xx <= cx + 1; xx++) {
                 long h = hash(xx, zz, seed + category * 7919L);
@@ -209,12 +210,14 @@ public final class BiomeShareSampler {
                 if (distance < best) {
                     best = distance;
                     closestSeed = h;
+                    closestX = xx;
+                    closestZ = zz;
                 }
             }
         }
         long sum = 0;
         for (int weight : weights) sum += Math.max(1, weight);
-        double pick = unit(hash(cx, cz, closestSeed + 0x71d9a53L)) * sum;
+        double pick = unit(hash(closestX, closestZ, closestSeed + 0x71d9a53L)) * sum;
         for (int i = 0; i < weights.length; i++) {
             pick -= Math.max(1, weights[i]);
             if (pick < 0) return i;
