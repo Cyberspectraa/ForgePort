@@ -245,6 +245,10 @@ if mixins.exists():
     cfg["refmap"]="omniisle.refmap.json"
     cfg["minVersion"]="0.8.5"
 
+    cfg["client"]=[c for c in cfg.get("client",[]) if c != "WorldTypeEditorMixin"]
+    cfg["mixins"]=[*cfg.get("mixins", []), "StructureLandGuardMixin"]
+    mixins.write_text(json.dumps(cfg, indent=2)+"\n")
+
 # Modded structures are not automatically constrained by OmniIsle's custom island
 # footprint. Guard opt-in land structures at start-generation time, BEFORE pieces
 # carve terrain, while leaving marine structures and other world types untouched.
@@ -346,7 +350,4 @@ land_tag.write_text(json.dumps({
 }, indent=2)+"\n", encoding="utf-8")
 
 
-    cfg["client"]=[c for c in cfg.get("client",[]) if c != "WorldTypeEditorMixin"]
-    cfg["mixins"]=[*cfg.get("mixins", []), "StructureLandGuardMixin"]
-    mixins.write_text(json.dumps(cfg, indent=2)+"\n")
 print("Native Forge transformation applied")
