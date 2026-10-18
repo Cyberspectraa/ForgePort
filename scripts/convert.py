@@ -244,6 +244,109 @@ if mixins.exists():
     cfg=json.loads(mixins.read_text().replace("JAVA_21", "JAVA_17"))
     cfg["refmap"]="omniisle.refmap.json"
     cfg["minVersion"]="0.8.5"
+
+# Modded structures are not automatically constrained by OmniIsle's custom island
+# footprint. Guard opt-in land structures at start-generation time, BEFORE pieces
+# carve terrain, while leaving marine structures and other world types untouched.
+guard=JAVA/"mixin/client/StructureLandGuardMixin.java"
+guard.write_text("""package com.hack337.omniisle.mixin.client;
+
+import com.hack337.omniisle.worldgen.OmniBiomeSource;
+import java.util.Optional;
+import java.util.function.Predicate;
+import net.minecraft.core.Holder;
+import net.minecraft.core.Registry;
+import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.LevelHeightAccessor;
+import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.biome.BiomeSource;
+import net.minecraft.world.level.chunk.ChunkGenerator;
+import net.minecraft.world.level.levelgen.DensityFunction;
+import net.minecraft.world.level.levelgen.RandomState;
+import net.minecraft.world.level.levelgen.structure.Structure;
+import net.minecraft.world.level.levelgen.structure.StructureStart;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+/**
+ * Only structures in #omniisle:land_only are guarded. This is opt-in so aquatic
+ * modded structures, vanilla ocean monuments, etc. still generate normally.
+ * The outer ring keeps large structures away from coastlines, not just their
+ * start chunk. Reads this world's actual continentalness rather than using
+ * a global mask: custom editor datapacks and seeds are supported.
+ */
+@Mixin(Structure.class)
+public abstract class StructureLandGuardMixin {
+    private static final TagKey<Structure> OMNI_LAND_ONLY = TagKey.create(
+        Registries.STRUCTURE, new ResourceLocation("omniisle", "land_only"));
+    private static final int FOOTPRINT_MARGIN = 96;
+    private static final double MIN_LAND_CONTINENTALNESS = 0.02;
+
+    @Inject(method = "generate", at = @At("HEAD"), cancellable = true)
+    private void omniisle$guardLandStructure(
+            RegistryAccess registryAccess, ChunkGenerator generator,
+            BiomeSource biomeSource, RandomState randomState,
+            StructureTemplateManager structureTemplates, long worldSeed,
+            ChunkPos chunkPos, int references, LevelHeightAccessor heightAccessor,
+            Predicate<Holder<Biome>> biomePredicate,
+            CallbackInfoReturnable<StructureStart> cir) {
+
+        if (!(biomeSource instanceof OmniBiomeSource)) return;
+        Registry<Structure> registry = registryAccess.registryOrThrow(Registries.STRUCTURE);
+        Structure structure = (Structure) (Object) this;
+        ResourceLocation id = registry.getKey(structure);
+        if (id == null) return;
+
+        Optional<Holder.Reference<Structure>> holder =
+            registry.getHolder(ResourceKey.create(Registries.STRUCTURE, id));
+        if (holder.isEmpty() || !holder.get().is(OMNI_LAND_ONLY)) return;
+
+        int x = chunkPos.getMiddleBlockX();
+        int z = chunkPos.getMiddleBlockZ();
+        var continents = randomState.router().continents();
+        int margin = FOOTPRINT_MARGIN;
+        int[][] offsets = {
+            {0, 0}, {margin, 0}, {-margin, 0}, {0, margin}, {0, -margin},
+            {margin, margin}, {margin, -margin}, {-margin, margin}, {-margin, -margin}
+        };
+        for (int[] offset : offsets) {
+            double value = continents.compute(
+                new DensityFunction.SinglePointContext(x + offset[0], 64, z + offset[1]));
+            if (value < MIN_LAND_CONTINENTALNESS) {
+                cir.setReturnValue(StructureStart.INVALID_START);
+                return;
+            }
+        }
+    }
+}
+""", encoding="utf-8")
+
+# Any datapack may extend this registry tag with other land-only structures.
+# Optional entries allow OmniIsle to load without Ice And Fire installed.
+land_tag=RES/"data/omniisle/tags/worldgen/structure/land_only.json"
+land_tag.parent.mkdir(parents=True, exist_ok=True)
+import json
+land_structures=[
+    "fire_dragon_cave", "ice_dragon_cave", "lightning_dragon_cave",
+    "fire_dragon_roost", "ice_dragon_roost", "lightning_dragon_roost",
+    "cyclops_cave", "gorgon_temple", "graveyard", "hydra_cave",
+    "mausoleum", "pixie_village"
+]
+land_tag.write_text(json.dumps({
+    "replace": False,
+    "values": [{"id": "iceandfire:"+name, "required": False} for name in land_structures]
+}, indent=2)+"\n", encoding="utf-8")
+
+
     cfg["client"]=[c for c in cfg.get("client",[]) if c != "WorldTypeEditorMixin"]
+    cfg["mixins"]=[*cfg.get("mixins", []), "StructureLandGuardMixin"]
     mixins.write_text(json.dumps(cfg, indent=2)+"\n")
 print("Native Forge transformation applied")
