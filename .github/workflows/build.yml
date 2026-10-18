@@ -253,7 +253,7 @@ jobs:
                   assert disabled not in enabled, 'Disabled biome leaked into '+field+': '+disabled
                   print('Verified disabled biome filtered:', field, disabled)
               assert 'minecraft:plains' in biome_source['land_biomes'], 'Stable climate palette changed'
-          echo 'Biome toggle and world preset serialization tests passed'
+          print('Biome toggle and world preset serialization tests passed')
           PY
           # Undo the temporary test hook before publishing the source archive.
           python3 - <<'PY'
