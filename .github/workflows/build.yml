@@ -274,6 +274,21 @@ jobs:
                               .collect(java.util.stream.Collectors.toSet());
                           if (!possible.contains("omnitest:glowing_grove"))
                               throw new AssertionError("Selected modded biome did not survive world preset reload");
+                          var biomeRegistry = context.worldgenRegistries().compositeAccess()
+                              .registryOrThrow(net.minecraft.core.registries.Registries.BIOME);
+                          var forest = biomeRegistry.getHolderOrThrow(net.minecraft.resources.ResourceKey.create(
+                              net.minecraft.core.registries.Registries.BIOME,
+                              new net.minecraft.resources.ResourceLocation("minecraft", "forest")));
+                          var ocean = biomeRegistry.getHolderOrThrow(net.minecraft.resources.ResourceKey.create(
+                              net.minecraft.core.registries.Registries.BIOME,
+                              new net.minecraft.resources.ResourceLocation("minecraft", "ocean")));
+                          OmniBiomeSource omniSource = (OmniBiomeSource)biomeSource;
+                          if (!omniSource.allowsLandOnly(net.minecraft.core.HolderSet.direct(forest)))
+                              throw new AssertionError("Land-only structures are not classified as land");
+                          if (omniSource.allowsLandOnly(net.minecraft.core.HolderSet.direct(ocean))
+                                  || omniSource.allowsLandOnly(net.minecraft.core.HolderSet.direct(forest, ocean)))
+                              throw new AssertionError("Ocean/mixed structures incorrectly forced onto land");
+                          System.out.println("OMNI_SMOKE_GENERIC_STRUCTURE_CLASSIFICATION_OK");
                           for (String forbidden : java.util.List.of("minecraft:plains", "minecraft:beach",
                                   "minecraft:deep_ocean", "minecraft:frozen_river", "minecraft:dripstone_caves", "minecraft:desert")) {
                               if (possible.contains(forbidden))
