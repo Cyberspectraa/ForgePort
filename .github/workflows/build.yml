@@ -219,6 +219,9 @@ jobs:
                       }
                   } else if (phase == 4 && mc.screen instanceof CreateWorldScreen worldScreen) {
                       if (++appliedWait > 1200) throw new AssertionError("World preset datapack reload timed out");
+                      // ForgeEditorButton updates the selected world preset on ScreenEvent.Render.Post,
+                      // while this smoke harness ticks before rendering. Wait for that refresh.
+                      if (appliedWait < 30) return;
                       var context = worldScreen.getUiState().getSettings();
                       boolean selected = context.dataConfiguration().dataPacks().getEnabled().stream()
                           .anyMatch(id -> id.endsWith(WorldPackBuilder.FILE_NAME));
