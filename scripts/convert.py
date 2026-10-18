@@ -402,8 +402,8 @@ print("Native Forge transformation applied")
 biome_patch_file=Path("scripts/modded_biomes.py")
 exec(compile(biome_patch_file.read_text(encoding="utf-8"), str(biome_patch_file), "exec"))
 
-# Optional weighted biome proportions and generic land-structure constraints.
-share_patch_file=Path("scripts/biome_balance.py")
-exec(compile(share_patch_file.read_text(encoding="utf-8"), str(share_patch_file), "exec"))
+# Registry-driven structures and improved mod biome generation; no percentage system.
+generation_patch_file=Path("scripts/biome_generation.py")
+exec(compile(generation_patch_file.read_text(encoding="utf-8"), str(generation_patch_file), "exec"))
 
 
