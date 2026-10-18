@@ -94,6 +94,12 @@ patch_once("client/IslandDraft.java",
 
     public boolean isStructureEnabled(StructureOption option) {""")
 
+# Desert pyramids require the desert biome; the original palette used badlands
+# as a convenient placement candidate but would incorrectly place pyramids there.
+patch_once("client/WorldPackBuilder.java",
+    'structure("desert_pyramids", "minecraft:desert_pyramid", "desert_pyramid", BiomePreview.Type.BADLANDS)',
+    'structure("desert_pyramids", "minecraft:desert_pyramid", "desert_pyramid", BiomePreview.Type.DESERT)')
+
 # Preserve per-world selections in the exported datapack rather than editing
 # global Minecraft biome tags / other mods' registry data.
 patch_once("client/WorldPackBuilder.java",
@@ -103,8 +109,12 @@ patch_once("client/WorldPackBuilder.java",
     """            boolean enabled = state.isStructureEnabled(IslandDraft.StructureOption.values()[structureIndex]);""",
     """            // A structure tied to a specific biome must not silently migrate to
             // a different biome when its required biome has been turned off.
+            // Strongholds, portals, mineshafts and chambers are not tied to a
+            // single surface biome. Ancient cities require Deep Dark instead.
+            boolean generic = java.util.Set.of("strongholds", "ruined_portals", "mineshafts",
+                "trial_chambers", "ancient_cities").contains(definition.setName);
             boolean enabled = state.isStructureEnabled(IslandDraft.StructureOption.values()[structureIndex])
-                && state.isAnyRequiredBiomeEnabled(definition.biomes)
+                && (generic || state.isAnyRequiredBiomeEnabled(definition.biomes))
                 && (!definition.deepDark || state.isBiomeEnabled(BiomePreview.Type.DEEP_DARK));""")
 
 # Generated terrain, preview and structure compatibility share the same stable
