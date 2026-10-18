@@ -286,7 +286,8 @@ jobs:
                               var sampler = new net.minecraft.world.level.biome.Climate.Sampler(
                                   zero, zero,
                                   net.minecraft.world.level.levelgen.DensityFunctions.constant(continent),
-                                  zero, zero, zero, java.util.List.of());
+                                  zero, zero, net.minecraft.world.level.levelgen.DensityFunctions.constant(0.5),
+                                  java.util.List.of());
                               for (int x = -3000; x <= 3000; x += 451) {
                                   for (int z = -3000; z <= 3000; z += 449) {
                                       for (int y : new int[] {-24, 16, 64, 100}) {
