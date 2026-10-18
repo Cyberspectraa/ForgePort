@@ -63,6 +63,8 @@ jobs:
               for p in required: assert p in names, "Missing "+p
               assert "fabric.mod.json" not in names
               assert "com/hack337/omniisle/mixin/client/StructureLandGuardMixin.class" in names
+              assert "com/hack337/omniisle/client/ModdedBiomeScreen.class" in names
+              assert "com/hack337/omniisle/worldgen/ModdedBiomePatches.class" in names
               land_tag = "data/omniisle/tags/worldgen/structure/land_only.json"
               assert land_tag in names
               entries = json.loads(z.read(land_tag))["values"]
