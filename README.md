@@ -32,11 +32,11 @@ When you press **Done**, OmniIsle writes the selected registry IDs into the gene
 
 Custom biomes do not necessarily have terrain-aware climate placement rules of their originating mod. Assign each custom biome to the appropriate category; OmniIsle's own region sampling decides where within that category it appears.
 
-## Biome percentages and approximate distribution
+## Biome generation and modded biomes
 
-Open the OmniIsle island editor, select **Mods**, and choose **Biome balance / percentages**. This page lists **every enabled vanilla and modded biome**. Choose Land, Shore, Ocean, River, or Cave; click a biome; use **-5%, -1%, +1%, +5%** to change its **target share within that category**. The shares of the other enabled biomes in that category are normalized automatically to total 100%. A biome must be enabled before it appears; unchecking it removes it from generation. Changes are stored in the world-specific generated datapack as `biome_weights`, and carried forward if you reopen the editor.
+OmniIsle keeps its original climate-driven distribution for vanilla biomes. The editor's **Mods** tab lets you opt into biomes from installed mods, assigning each to Land, Shore, Ocean, River, or Cave. These added biomes generate in larger, smooth, deterministic regions, shared by the preview and server worldgen. Every selected mod biome has a fair opportunity to appear rather than being biased toward the middle of a biome list.
 
-**Important:** percentages are *statistical targets*, not a pixel-perfect land-area guarantee. OmniIsle selects organic regions deterministically (seed and coordinates), and island shape, irregular coastlines, cave depth, and finite region counts produce variation. For example, a land biome set to 65% should generally occupy more inland area than a biome set to 10%, but individual maps won't be exact. When no percentage has been adjusted for a category, its original climate-based distribution remains in use.
+**No biome percentage controls or weight settings are provided.** Enabling or disabling biomes is the only selection control; the mod decides the distribution based on the seed and terrain. A category can contain only modded biomes, in which case disabled vanilla entries are not regenerated. Generated datapacks no longer serialize `biome_weights`, and an existing world preset with that old property no longer changes biome proportions. New chunks follow the saved enabled-biome selection; already-generated terrain is not replaced.
 
 ## Cross-mod compatibility boundaries
 
@@ -50,7 +50,7 @@ The Forge port checks a structure's allowed biome registry entries against the b
 
 This applies to **registered Minecraft structures**. Mods that generate structures through features, block placement callbacks, or custom systems may require separate integrations. Already-generated chunks and structure starts are not retroactively removed.
 
-For release validation, the CI client loads a test-only custom biome, selects it, verifies its datapack export and real biome-source sampling, and checks that a biome-dependent structure is disabled when its required biome is switched off. The test biome is not included in the distributable JAR.
+For release validation, the CI client loads a test-only custom biome, selects it, verifies its datapack export and real biome-source sampling, checks that a biome-dependent structure is disabled when its required biome is switched off, and checks stable and contiguous modded biome regions, including mod-only categories. The test biome is not included in the distributable JAR.
 
 ## Installation / support
 
