@@ -87,7 +87,17 @@ import java.util.WeakHashMap;
 @Mod.EventBusSubscriber(modid="omniisle", value=Dist.CLIENT, bus=Mod.EventBusSubscriber.Bus.FORGE)
 public final class ForgeEditorButton {
     private static final Map<CreateWorldScreen, Button> BUTTONS = new WeakHashMap<>();
+    private static final Map<CreateWorldScreen, Boolean> RESELECT_PRESET = new WeakHashMap<>();
     private ForgeEditorButton() {}
+
+    /** Called before applying a regenerated world-creation datapack. */
+    public static void expectPresetRefresh(CreateWorldScreen screen) {
+        RESELECT_PRESET.put(screen, true);
+    }
+
+    public static void cancelPresetRefresh(CreateWorldScreen screen) {
+        RESELECT_PRESET.remove(screen);
+    }
 
     @SubscribeEvent
     public static void addButton(ScreenEvent.Init.Post event) {
@@ -108,6 +118,27 @@ public final class ForgeEditorButton {
         Button button = BUTTONS.get(screen);
         if (button == null) return;
         WorldCreationUiState state = screen.getUiState();
+        // In 1.20.1 the datapack reload can preserve a stale selectedDimensions
+        // generator even though the new preset JSON and enabled pack were loaded.
+        // Re-select the freshly loaded registry entry exactly once after save.
+        if (Boolean.TRUE.equals(RESELECT_PRESET.get(screen))) {
+            boolean generatedPackEnabled = state.getSettings().dataConfiguration()
+                .dataPacks().getEnabled().stream()
+                .anyMatch(id -> id.endsWith(WorldPackBuilder.FILE_NAME));
+            if (generatedPackEnabled) {
+                var reloadedPreset = java.util.stream.Stream.concat(
+                        state.getNormalPresetList().stream(), state.getAltPresetList().stream())
+                    .filter(entry -> entry.preset() != null && entry.preset().unwrapKey()
+                        .map(key -> "omniisle".equals(key.location().getNamespace())
+                            && "omniisle".equals(key.location().getPath()))
+                        .orElse(false))
+                    .findFirst();
+                if (reloadedPreset.isPresent()) {
+                    RESELECT_PRESET.remove(screen);
+                    state.setWorldType(reloadedPreset.get());
+                }
+            }
+        }
         boolean selected = state.getWorldType().preset() != null
             && state.getWorldType().preset().unwrapKey()
                 .map(key -> "omniisle".equals(key.location().getNamespace())
@@ -205,6 +236,14 @@ replace("client/OmniIsleEditorScreen.java",[
      "public void renderBackground(GuiGraphics context)"),
     ("super.renderBackground(context, mouseX, mouseY, delta)",
      "super.renderBackground(context)"),
+    ("""((CreateWorldBridge)parent).omniisle$applyPack(
+                manager, true, configuration -> minecraft.setScreen(parent));""",
+     """ForgeEditorButton.expectPresetRefresh(parent);
+            ((CreateWorldBridge)parent).omniisle$applyPack(
+                manager, true, configuration -> {
+                    ForgeEditorButton.cancelPresetRefresh(parent);
+                    minecraft.setScreen(parent);
+                });"""),
 ])
 # GUI dimensions and drawing methods are mostly unchanged from 1.21.1, except background API.
 replace("client/BiomeSelectionScreen.java",[
