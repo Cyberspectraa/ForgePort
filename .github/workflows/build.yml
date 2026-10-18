@@ -65,6 +65,8 @@ jobs:
               assert "com/hack337/omniisle/mixin/client/StructureLandGuardMixin.class" in names
               assert "com/hack337/omniisle/client/ModdedBiomeScreen.class" in names
               assert "com/hack337/omniisle/worldgen/ModdedBiomePatches.class" in names
+              assert "com/hack337/omniisle/worldgen/BiomeShareSampler.class" in names
+              assert "com/hack337/omniisle/client/BiomeBalanceScreen.class" in names
               land_tag = "data/omniisle/tags/worldgen/structure/land_only.json"
               assert land_tag in names
               entries = json.loads(z.read(land_tag))["values"]
@@ -219,6 +221,11 @@ jobs:
                                   throw new AssertionError("Could not select installed mod biome");
                               if (!restricted.enabledBiomeIds(BiomePreview.Category.LAND).contains("omnitest:glowing_grove"))
                                   throw new AssertionError("Mod biome missing from editor selection");
+                              if (!restricted.setTargetPercent("omnitest:glowing_grove", BiomePreview.Category.LAND, 65)
+                                      || Math.abs(restricted.targetPercent("omnitest:glowing_grove", BiomePreview.Category.LAND) - 65) > 1)
+                                  throw new AssertionError("Per-biome target percent did not update");
+                              if (!restricted.copy().biomeWeights().containsKey("omnitest:glowing_grove"))
+                                  throw new AssertionError("Copied draft dropped user biome weights");
                               // Desert pyramids may only start when Desert is enabled.
                               if (!restricted.toggleBiome(BiomePreview.Type.DESERT))
                                   throw new AssertionError("Could not disable structure-required biome");
@@ -274,6 +281,7 @@ jobs:
                           }
                           var zero = net.minecraft.world.level.levelgen.DensityFunctions.constant(0.0);
                           boolean sawModdedBiome = false;
+                          int sampledLand = 0, sampledModLand = 0;
                           for (double continent : new double[] {-0.8, -0.38, -0.15, 0.2, 0.6}) {
                               var sampler = new net.minecraft.world.level.biome.Climate.Sampler(
                                   zero, zero,
@@ -287,12 +295,20 @@ jobs:
                                           if (!possible.contains(id))
                                               throw new AssertionError("Biome selector returned disabled biome: " + id);
                                           if (id.equals("omnitest:glowing_grove")) sawModdedBiome = true;
+                                          if (continent == 0.6 && y == 64) {
+                                              sampledLand++;
+                                              if (id.equals("omnitest:glowing_grove")) sampledModLand++;
+                                          }
                                       }
                                   }
                               }
                           }
                           if (!sawModdedBiome)
                               throw new AssertionError("Enabled modded biome never appeared during generation sampling");
+                          double moddedShare = sampledModLand / (double)Math.max(1, sampledLand);
+                          if (moddedShare < 0.40 || moddedShare > 0.88)
+                              throw new AssertionError("Target 65% biome balance generated " + moddedShare);
+                          System.out.println("OMNI_SMOKE_BIOME_BALANCE_PERCENT=" + moddedShare);
                           System.out.println("OMNI_SMOKE_BIOME_SETTINGS_APPLIED");
                           phase = 5;
                       }
@@ -342,6 +358,10 @@ jobs:
           with zipfile.ZipFile(filtered) as z:
               generated=json.loads(z.read('data/omniisle/worldgen/world_preset/omniisle.json'))
               biome_source=generated['dimensions']['minecraft:overworld']['generator']['biome_source']
+              weights=biome_source.get('biome_weights',{})
+              assert weights.get('omnitest:glowing_grove', 0)>1000, weights
+              assert 'minecraft:plains' not in weights
+              print('Verified per-biome percentage serialized:',weights['omnitest:glowing_grove'])
               checks={
                   'enabled_land_biomes':'minecraft:plains',
                   'enabled_shore_biomes':'minecraft:beach',
