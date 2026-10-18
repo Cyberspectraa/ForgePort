@@ -16,6 +16,14 @@ The port must preserve the original island generation, coastline/deep-ocean tran
 
 **Current status:** [GitHub Actions build 39036829484](https://github.com/Cyberspectraa/OmniIsleForgeRemake/actions/runs/39036829484) passed compile/reobfuscation, resource checks, dedicated server generation, selection of the OmniIsle world preset, click-through on the Forge-native Customize OmniIsle button, editor rendering, editor datapack export and a separate installed production Forge 47.4.10 server launch with the packaged mod JAR. The previous JAR distributed before this run was missing `omniisle.refmap.json` and must not be used.
 
+## Biome editor selections (Forge 1.20.1)
+
+The Forge world-creation screen must select the freshly reloaded OmniIsle preset after the editor's generated datapack is applied. Otherwise it may retain the previous biome source and generate biomes that were just disabled. The editor now refreshes the world preset after a successful save, and OmniIsle reports only the enabled biome palette as possible biomes.
+
+The automated client test disables Plains, Beach, Deep Ocean, Frozen River and Dripstone Caves, exports the customized datapack, applies it in the real Create World screen, and checks that the selected biome source and sampled generation do not return the disabled biomes. This test passed on Forge 47.4.10.
+
+**Create a new test world** to evaluate biome selection changes. Already-generated chunks are not rewritten. Keep at least one biome enabled in each category. Vanilla biome checkboxes do not control biomes added by other mods.
+
 ## Installation / support
 
 1. Download `OmniIsle-Forge-1.20.1` from the successful run's Artifacts and extract its JAR (not the artifact ZIP) into the `mods` directory of Minecraft 1.20.1 Forge 47.4.10.
