@@ -91,9 +91,7 @@ patch_once("client/IslandDraft.java",
     """        // Distinct but stable dark green/teal colour for modded biome patches.
         return 0xFF000000 | (0x40 + ((rgb >>> 16) & 0x5F)) << 16
             | (0x60 + ((rgb >>> 8) & 0x6F)) << 8 | (0x40 + (rgb & 0x5F));
-    }
-
-    public boolean isStructureEnabled""",
+    }""",
     """        return colorForModBiomeHash(rgb);
     }
 
@@ -101,11 +99,7 @@ patch_once("client/IslandDraft.java",
     private static int colorForModBiomeHash(int rgb) {
         return 0xFF000000 | (0x40 + ((rgb >>> 16) & 0x5F)) << 16
             | (0x60 + ((rgb >>> 8) & 0x6F)) << 8 | (0x40 + (rgb & 0x5F));
-    }
-
-    public boolean isStructureEnabled""")
-# Include 0 vanilla enabled if modded biome is selected. Previously editor
-# preview could fail when last vanilla biome in a category was disabled.
+    }""")
 patch_once("client/IslandDraft.java",
     """        List<BiomePreview.Type> compatible = compatibleChoices(preferred);
         if (compatible.size() == 1) return compatible.get(0);""",
