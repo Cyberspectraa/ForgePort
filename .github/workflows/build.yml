@@ -233,6 +233,23 @@ jobs:
                               if (possible.contains(forbidden))
                                   throw new AssertionError("Disabled biome still possible after reload: " + forbidden);
                           }
+                          var zero = net.minecraft.world.level.levelgen.DensityFunctions.constant(0.0);
+                          for (double continent : new double[] {-0.8, -0.38, -0.15, 0.2, 0.6}) {
+                              var sampler = new net.minecraft.world.level.biome.Climate.Sampler(
+                                  zero, zero,
+                                  net.minecraft.world.level.levelgen.DensityFunctions.constant(continent),
+                                  zero, zero, zero, java.util.List.of());
+                              for (int x = -3000; x <= 3000; x += 451) {
+                                  for (int z = -3000; z <= 3000; z += 449) {
+                                      for (int y : new int[] {-24, 16, 64, 100}) {
+                                          var biome = biomeSource.getNoiseBiome(x / 4, y / 4, z / 4, sampler);
+                                          String id = biome.unwrapKey().orElseThrow().location().toString();
+                                          if (!possible.contains(id))
+                                              throw new AssertionError("Biome selector returned disabled biome: " + id);
+                                      }
+                                  }
+                              }
+                          }
                           System.out.println("OMNI_SMOKE_BIOME_SETTINGS_APPLIED");
                           phase = 5;
                       }
