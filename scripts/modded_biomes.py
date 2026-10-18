@@ -48,6 +48,12 @@ patch_once("client/IslandDraft.java",
             customBiomes.get(category).remove(id);
             return true;
         }
+        // Never leave a category empty when moving its last modded biome.
+        for (var entry : customBiomes.entrySet()) {
+            if (entry.getKey() != category && entry.getValue().contains(id)
+                    && entry.getValue().size() == 1 && enabledBiomes(entry.getKey()).isEmpty())
+                return false;
+        }
         for (var entries : customBiomes.values()) entries.remove(id);
         customBiomes.computeIfAbsent(category, ignored -> new java.util.LinkedHashSet<>()).add(id);
         return true;
@@ -199,7 +205,7 @@ public final class ModdedBiomeScreen extends Screen {
 
     @Override
     protected void init() {
-        var registry = createWorld.getUiState().getSettings().worldgenRegistries()
+        var registry = createWorld.getUiState().getSettings().worldgenRegistries().compositeAccess()
             .registryOrThrow(Registries.BIOME);
         available = registry.keySet().stream()
             .filter(id -> !"minecraft".equals(id.getNamespace()))
