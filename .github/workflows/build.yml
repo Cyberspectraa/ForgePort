@@ -155,6 +155,13 @@ jobs:
                           phase=4;
                           System.out.println("OMNI_SMOKE_EDITOR_RENDERED");
                           try {
+                              net.minecraft.client.Screenshot.grab(mc.gameDirectory, "omniisle-editor.png",
+                                  mc.getMainRenderTarget(), msg -> System.out.println("OMNI_SMOKE_SCREENSHOT " + msg.getString()));
+                          } catch (Exception screenshotError) {
+                              System.out.println("OMNI_SMOKE_SCREENSHOT_FAILED");
+                              screenshotError.printStackTrace();
+                          }
+                          try {
                               WorldPackBuilder.export(Path.of("omni-smoke-datapacks"), new IslandDraft());
                               System.out.println("OMNI_SMOKE_ISLAND_DATAPACK_EXPORTED");
                           } catch (Exception e) {
@@ -179,7 +186,7 @@ jobs:
           client_pid=$!
           passed=0
           for n in $(seq 1 90); do
-            if grep -q 'OMNI_SMOKE_ISLAND_DATAPACK_EXPORTED' client-smoke.log; then passed=1; break; fi
+            if grep -q 'OMNI_SMOKE_ISLAND_DATAPACK_EXPORTED' client-smoke.log && test -s run/screenshots/omniisle-editor.png; then passed=1; break; fi
             if ! kill -0 "$client_pid" 2>/dev/null; then break; fi
             sleep 2
           done
@@ -189,7 +196,8 @@ jobs:
           set -e
           tail -n 140 client-smoke.log
           if [ "$passed" != "1" ]; then echo 'World creation editor did not finish loading'; exit 1; fi
-          if grep -E 'MixinApplyError|InvalidInjectionException|Failed to apply mixin|OMNI_SMOKE_EXPORT_FAILED' client-smoke.log; then exit 1; fi
+          if grep -E 'MixinApplyError|InvalidInjectionException|Failed to apply mixin|OMNI_SMOKE_EXPORT_FAILED|OMNI_SMOKE_SCREENSHOT_FAILED' client-smoke.log; then exit 1; fi
+          test -s run/screenshots/omniisle-editor.png
           python3 - <<'PY'
           import json,zipfile
           p='run/omni-smoke-datapacks/omniisle-generated.zip'
@@ -219,7 +227,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: OmniIsle-Forge-Client-Verification
-          path: client-smoke.log
+          path: |
+            client-smoke.log
+            run/screenshots/omniisle-editor.png
           if-no-files-found: ignore
       - name: Install production Forge server and load release JAR
         run: |
