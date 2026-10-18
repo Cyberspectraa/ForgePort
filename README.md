@@ -1,6 +1,6 @@
 # OmniIsle — native Forge 1.20.1 port (development)
 
-This repository is for a standalone **Minecraft Forge 1.20.1** port of **OmniIsle 0.5.0**. A native Forge JAR now builds and passes automated editor interaction, datapack export, and installed dedicated-server smoke tests on **Forge 47.4.10**. It remains an unofficial test build until verified with a real desktop client and larger modpacks.
+This repository is for a standalone **Minecraft Forge 1.20.1** port of **OmniIsle 0.5.0**. A native Forge JAR now builds and passes automated editor interaction, datapack export, and installed dedicated-server smoke tests on **Forge 47.4.10**. It remains an unofficial test build until verified with a real desktop client and larger modpacks. The CI workflow pulls exact, pinned upstream Git revisions, and restores its temporary editor test hook before uploading the full source archive.
 
 ## Canonical upstream references
 
@@ -14,7 +14,7 @@ Target: **Minecraft 1.20.1 · Forge 47.4.10 · Java 17**. This is **Forge**, not
 
 The port must preserve the original island generation, coastline/deep-ocean transition, biome selection, world-creation preset, custom brush editor, custom mask export/persistence, structure placement, and original supported commands. The editor and per-world datapack persistence are not optional features.
 
-**Current status:** [GitHub Actions build 39036829484](https://github.com/Cyberspectraa/ForgePort/actions/runs/39036829484) passed compile/reobfuscation, resource checks, dedicated server generation, selection of the OmniIsle world preset, click-through on the Forge-native Customize OmniIsle button, editor rendering, editor datapack export and a separate installed production Forge 47.4.10 server launch with the packaged mod JAR. The previous JAR distributed before this run was missing `omniisle.refmap.json` and must not be used.
+**Current status:** [GitHub Actions build 39036829484](https://github.com/Cyberspectraa/OmniIsleForgeRemake/actions/runs/39036829484) passed compile/reobfuscation, resource checks, dedicated server generation, selection of the OmniIsle world preset, click-through on the Forge-native Customize OmniIsle button, editor rendering, editor datapack export and a separate installed production Forge 47.4.10 server launch with the packaged mod JAR. The previous JAR distributed before this run was missing `omniisle.refmap.json` and must not be used.
 
 ## Installation / support
 
