@@ -398,16 +398,7 @@ land_tag.write_text(json.dumps({
 
 print("Native Forge transformation applied")
 
-# Keep the extended biome integrations in a separately maintained patch module.
-# The staged compressed form is decoded during the initial CI bootstrap; after
-# verification the readable file is committed to the repository.
-import base64, zlib
+# Additional registry-driven modded biomes and biome-gated structure generation.
 biome_patch_file=Path("scripts/modded_biomes.py")
-if not biome_patch_file.exists():
-    compressed=Path("scripts/modded_biomes.py.zlib.b64").read_text(encoding="utf-8")
-    biome_patch_file.write_bytes(zlib.decompress(base64.b64decode(compressed)))
-print("OMNI_MODDED_BIOME_PATCH_BEGIN")
-print(biome_patch_file.read_text(encoding="utf-8"), end="")
-print("OMNI_MODDED_BIOME_PATCH_END")
 exec(compile(biome_patch_file.read_text(encoding="utf-8"), str(biome_patch_file), "exec"))
 
