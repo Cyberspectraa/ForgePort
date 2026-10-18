@@ -107,6 +107,17 @@ patch_once("client/IslandDraft.java",
         if (compatible.isEmpty()) return preferred;
         if (compatible.size() == 1) return compatible.get(0);""")
 
+# If all vanilla biomes in a category are unchecked and modded biomes remain,
+# the map preview must not paint disabled vanilla regions in the patch gaps.
+patch_once("client/IslandDraft.java",
+    """        if (index < 0) return vanilla.color;
+        int rgb = 0, cursor = 0;""",
+    """        if (index < 0) {
+            if (!enabledBiomes(vanilla.category).isEmpty()) return vanilla.color;
+            index = 0;
+        }
+        int rgb = 0, cursor = 0;""")
+
 # The newly selected shares are serialized into the generated per-world preset.
 patch_once("client/WorldPackBuilder.java",
     """                biomeSource.addProperty("biome_seed", state.biomeSeed());""",
