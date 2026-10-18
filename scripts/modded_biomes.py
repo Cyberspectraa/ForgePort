@@ -80,11 +80,13 @@ patch_once("client/IslandDraft.java",
 
     /** The editor preview uses the same low-frequency patch choice as server generation. */
     public int previewColor(BiomePreview.Type vanilla, double worldX, double worldZ) {
-        java.util.List<String> mods = customBiomeIds(vanilla.category);
+        java.util.LinkedHashSet<String> mods = customBiomes.get(vanilla.category);
+        if (mods == null || mods.isEmpty()) return vanilla.color;
         int index = com.hack337.omniisle.worldgen.ModdedBiomePatches.index(
             (int)worldX, (int)worldZ, biomeSeed, mods.size(), vanilla.category.ordinal());
         if (index < 0) return vanilla.color;
-        int rgb = mods.get(index).hashCode();
+        int rgb = 0, cursor = 0;
+        for (String id : mods) if (cursor++ == index) { rgb = id.hashCode(); break; }
         // Distinct but stable dark green/teal colour for modded biome patches.
         return 0xFF000000 | (0x40 + ((rgb >>> 16) & 0x5F)) << 16
             | (0x60 + ((rgb >>> 8) & 0x6F)) << 8 | (0x40 + (rgb & 0x5F));
@@ -147,6 +149,22 @@ public final class ModdedBiomePatches {
 }
 """, encoding="utf-8")
 
+# Precompute the five custom biome palettes once per world generator, not at
+# each quart-biome sample during terrain generation.
+patch_once("worldgen/OmniBiomeSource.java",
+    "    private final long biomeSeed;",
+    """    private final long biomeSeed;
+    private final List<Holder<Biome>> modLandBiomes, modShoreBiomes, modOceanBiomes,
+        modRiverBiomes, modCaveBiomes;""")
+patch_once("worldgen/OmniBiomeSource.java",
+    "        this.biomeSeed = biomeSeed;",
+    """        this.biomeSeed = biomeSeed;
+        this.modLandBiomes = moddedOnly(this.enabledLandBiomes);
+        this.modShoreBiomes = moddedOnly(this.enabledShoreBiomes);
+        this.modOceanBiomes = moddedOnly(this.enabledOceanBiomes);
+        this.modRiverBiomes = moddedOnly(this.enabledRiverBiomes);
+        this.modCaveBiomes = moddedOnly(this.enabledCaveBiomes);""")
+
 # Add modded biomes to the actual biome-source sampling, not just to the codec.
 patch_once("worldgen/OmniBiomeSource.java",
     """    @Override
@@ -154,18 +172,20 @@ patch_once("worldgen/OmniBiomeSource.java",
     """    @Override
     public Holder<Biome> getNoiseBiome(int biomeX, int biomeY, int biomeZ, net.minecraft.world.level.biome.Climate.Sampler sampler) {
         Holder<Biome> base = originalNoiseBiome(biomeX, biomeY, biomeZ, sampler);
-        List<Holder<Biome>> group;
+        List<Holder<Biome>> extra;
         int category;
-        if (enabledLandBiomes.contains(base)) { group = enabledLandBiomes; category = 0; }
-        else if (enabledShoreBiomes.contains(base)) { group = enabledShoreBiomes; category = 1; }
-        else if (enabledOceanBiomes.contains(base)) { group = enabledOceanBiomes; category = 2; }
-        else if (enabledRiverBiomes.contains(base)) { group = enabledRiverBiomes; category = 3; }
-        else { group = enabledCaveBiomes; category = 4; }
-        List<Holder<Biome>> extra = group.stream()
-            .filter(holder -> holder.unwrapKey().map(key -> !"minecraft".equals(key.location().getNamespace())).orElse(false))
-            .toList();
+        if (enabledLandBiomes.contains(base)) { extra = modLandBiomes; category = 0; }
+        else if (enabledShoreBiomes.contains(base)) { extra = modShoreBiomes; category = 1; }
+        else if (enabledOceanBiomes.contains(base)) { extra = modOceanBiomes; category = 2; }
+        else if (enabledRiverBiomes.contains(base)) { extra = modRiverBiomes; category = 3; }
+        else { extra = modCaveBiomes; category = 4; }
         int index = ModdedBiomePatches.index(biomeX << 2, biomeZ << 2, biomeSeed, extra.size(), category);
         return index < 0 ? base : extra.get(index);
+    }
+
+    private static List<Holder<Biome>> moddedOnly(List<Holder<Biome>> group) {
+        return group.stream().filter(holder -> holder.unwrapKey()
+            .map(key -> !"minecraft".equals(key.location().getNamespace())).orElse(false)).toList();
     }
 
     private Holder<Biome> originalNoiseBiome(int biomeX, int biomeY, int biomeZ, net.minecraft.world.level.biome.Climate.Sampler sampler) {""")
