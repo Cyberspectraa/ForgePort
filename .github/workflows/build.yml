@@ -117,6 +117,7 @@ jobs:
           import com.hack337.omniisle.client.OmniIsleEditorScreen;
           import com.hack337.omniisle.client.WorldPackBuilder;
           import com.hack337.omniisle.client.IslandDraft;
+          import com.hack337.omniisle.client.BiomePreview;
           import java.nio.file.Path;
           import net.minecraft.client.Minecraft;
           import net.minecraft.client.gui.components.Button;
@@ -173,6 +174,20 @@ jobs:
                           }
                           try {
                               WorldPackBuilder.export(Path.of("omni-smoke-datapacks"), new IslandDraft());
+                              IslandDraft restricted = new IslandDraft();
+                              for (BiomePreview.Type disabled : new BiomePreview.Type[] {
+                                      BiomePreview.Type.PLAINS,
+                                      BiomePreview.Type.BEACH,
+                                      BiomePreview.Type.DEEP_OCEAN,
+                                      BiomePreview.Type.FROZEN_RIVER,
+                                      BiomePreview.Type.DRIPSTONE_CAVES }) {
+                                  if (!restricted.isBiomeEnabled(disabled) || !restricted.toggleBiome(disabled)
+                                          || restricted.isBiomeEnabled(disabled)) {
+                                      throw new AssertionError("Biome toggle failed: " + disabled);
+                                  }
+                              }
+                              WorldPackBuilder.export(Path.of("omni-biome-filter-test"), restricted);
+                              System.out.println("OMNI_SMOKE_BIOME_FILTER_EXPORTED");
                               System.out.println("OMNI_SMOKE_ISLAND_DATAPACK_EXPORTED");
                           } catch (Exception e) {
                               System.out.println("OMNI_SMOKE_EXPORT_FAILED");
@@ -220,6 +235,25 @@ jobs:
               assert 'data/omniisle/worldgen/world_preset/omniisle.json' in names
               assert any(n.startswith('data/minecraft/worldgen/structure_set/') for n in names)
               print('OmniIsle editor export datapack verified:', len(names), 'files')
+          filtered='run/omni-biome-filter-test/omniisle-generated.zip'
+          with zipfile.ZipFile(filtered) as z:
+              generated=json.loads(z.read('data/omniisle/worldgen/world_preset/omniisle.json'))
+              biome_source=generated['dimensions']['minecraft:overworld']['generator']['biome_source']
+              checks={
+                  'enabled_land_biomes':'minecraft:plains',
+                  'enabled_shore_biomes':'minecraft:beach',
+                  'enabled_ocean_biomes':'minecraft:deep_ocean',
+                  'enabled_river_biomes':'minecraft:frozen_river',
+                  'enabled_cave_biomes':'minecraft:dripstone_caves'
+              }
+              for field, disabled in checks.items():
+                  assert field in biome_source, 'Missing '+field
+                  enabled=biome_source[field]
+                  assert enabled, 'No enabled entries for '+field
+                  assert disabled not in enabled, 'Disabled biome leaked into '+field+': '+disabled
+                  print('Verified disabled biome filtered:', field, disabled)
+              assert 'minecraft:plains' in biome_source['land_biomes'], 'Stable climate palette changed'
+          echo 'Biome toggle and world preset serialization tests passed'
           PY
           # Undo the temporary test hook before publishing the source archive.
           python3 - <<'PY'
