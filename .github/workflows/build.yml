@@ -118,6 +118,7 @@ jobs:
           import com.hack337.omniisle.client.WorldPackBuilder;
           import com.hack337.omniisle.client.IslandDraft;
           import com.hack337.omniisle.client.BiomePreview;
+          import com.hack337.omniisle.client.ForgeEditorButton;
           import com.hack337.omniisle.mixin.client.CreateWorldBridge;
           import com.hack337.omniisle.worldgen.OmniBiomeSource;
           import com.mojang.datafixers.util.Pair;
@@ -206,6 +207,7 @@ jobs:
                                   .orElseThrow(() -> new IllegalStateException("Generated datapack not found after rescan"));
                               if (!packs.getSelectedIds().contains(selectedId) && !packs.addPack(selectedId))
                                   throw new IllegalStateException("Could not enable custom biome datapack");
+                              ForgeEditorButton.expectPresetRefresh(creationScreen);
                               ((CreateWorldBridge)creationScreen).omniisle$applyPack(packs, true, configuration -> {
                                   System.out.println("OMNI_SMOKE_BIOME_PACK_APPLY_ABORTED");
                               });
