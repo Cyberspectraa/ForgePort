@@ -132,6 +132,13 @@ replace("worldgen/OmniBiomeSource.java",[
     ("landBiomes.size() < 18", "landBiomes.size() < 17"),
     ("protected MapCodec<? extends BiomeSource> codec()","protected Codec<? extends BiomeSource> codec()"),
     ("key.identifier().getPath()","key.location().getPath()"),
+    ("""return Stream.of(landBiomes, enabledLandBiomes, shoreBiomes, enabledShoreBiomes,
+            oceanBiomes, enabledOceanBiomes, riverBiomes, enabledRiverBiomes,
+            caveBiomes, enabledCaveBiomes).flatMap(List::stream).distinct();""",
+     """// Only the active user-selected biomes are actually generatable.
+        // Do not advertise disabled palette entries to Minecraft or modded integrations.
+        return Stream.of(enabledLandBiomes, enabledShoreBiomes, enabledOceanBiomes,
+            enabledRiverBiomes, enabledCaveBiomes).flatMap(List::stream).distinct();"""),
     ("Registry.register(BuiltInRegistries.BIOME_SOURCE, OmniIsleIds.id(\"island_biomes\"), CODEC);","// registered on Forge mod event bus")
 ])
 replace("worldgen/SingleStructurePlacement.java",[
