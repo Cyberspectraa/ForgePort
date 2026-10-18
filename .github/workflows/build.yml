@@ -112,6 +112,25 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq xvfb libgl1-mesa-dri libglx-mesa0 > /dev/null
+          # Test-only datapack biome under a separate namespace, loaded by the dev client.
+          mkdir -p src/main/resources/data/omnitest/worldgen/biome
+          cat > src/main/resources/data/omnitest/worldgen/biome/glowing_grove.json <<'JSON'
+          {
+            "has_precipitation": true,
+            "temperature": 0.72,
+            "downfall": 0.45,
+            "effects": {
+              "fog_color": 12638463,
+              "water_color": 4159204,
+              "water_fog_color": 329011,
+              "sky_color": 7907327
+            },
+            "spawners": {},
+            "spawn_costs": {},
+            "carvers": [],
+            "features": [[], [], [], [], [], [], [], [], [], [], []]
+          }
+          JSON
           cat > src/main/java/com/hack337/omniisle/ClientSmokeHarness.java <<'JAVA'
           package com.hack337.omniisle;
           import com.hack337.omniisle.client.OmniIsleEditorScreen;
@@ -194,6 +213,17 @@ jobs:
                                       throw new AssertionError("Biome toggle failed: " + disabled);
                                   }
                               }
+                              if (!restricted.toggleCustomBiome("omnitest:glowing_grove", BiomePreview.Category.LAND))
+                                  throw new AssertionError("Could not select installed mod biome");
+                              if (!restricted.enabledBiomeIds(BiomePreview.Category.LAND).contains("omnitest:glowing_grove"))
+                                  throw new AssertionError("Mod biome missing from editor selection");
+                              // The desert-pyramid slot is keyed to BADLANDS in the port.
+                              if (!restricted.toggleBiome(BiomePreview.Type.BADLANDS))
+                                  throw new AssertionError("Could not disable structure-required biome");
+                              var registry = creationScreen.getUiState().getSettings().worldgenRegistries()
+                                  .compositeAccess().registryOrThrow(net.minecraft.core.registries.Registries.BIOME);
+                              if (!registry.containsKey(new net.minecraft.resources.ResourceLocation("omnitest", "glowing_grove")))
+                                  throw new AssertionError("Installed custom biome not discovered by world creator");
                               WorldPackBuilder.export(Path.of("omni-biome-filter-test"), restricted);
                               System.out.println("OMNI_SMOKE_BIOME_FILTER_EXPORTED");
                               Pair<Path, PackRepository> pair = ((CreateWorldBridge)creationScreen)
@@ -233,12 +263,15 @@ jobs:
                               .flatMap(holder -> holder.unwrapKey().stream())
                               .map(key -> key.location().toString())
                               .collect(java.util.stream.Collectors.toSet());
+                          if (!possible.contains("omnitest:glowing_grove"))
+                              throw new AssertionError("Selected modded biome did not survive world preset reload");
                           for (String forbidden : java.util.List.of("minecraft:plains", "minecraft:beach",
-                                  "minecraft:deep_ocean", "minecraft:frozen_river", "minecraft:dripstone_caves")) {
+                                  "minecraft:deep_ocean", "minecraft:frozen_river", "minecraft:dripstone_caves", "minecraft:badlands")) {
                               if (possible.contains(forbidden))
                                   throw new AssertionError("Disabled biome still possible after reload: " + forbidden);
                           }
                           var zero = net.minecraft.world.level.levelgen.DensityFunctions.constant(0.0);
+                          boolean sawModdedBiome = false;
                           for (double continent : new double[] {-0.8, -0.38, -0.15, 0.2, 0.6}) {
                               var sampler = new net.minecraft.world.level.biome.Climate.Sampler(
                                   zero, zero,
@@ -251,10 +284,13 @@ jobs:
                                           String id = biome.unwrapKey().orElseThrow().location().toString();
                                           if (!possible.contains(id))
                                               throw new AssertionError("Biome selector returned disabled biome: " + id);
+                                          if (id.equals("omnitest:glowing_grove")) sawModdedBiome = true;
                                       }
                                   }
                               }
                           }
+                          if (!sawModdedBiome)
+                              throw new AssertionError("Enabled modded biome never appeared during generation sampling");
                           System.out.println("OMNI_SMOKE_BIOME_SETTINGS_APPLIED");
                           phase = 5;
                       }
@@ -282,6 +318,7 @@ jobs:
           kill "$client_pid" 2>/dev/null || true
           wait "$client_pid" 2>/dev/null || true
           rm -f src/main/java/com/hack337/omniisle/ClientSmokeHarness.java
+          rm -rf src/main/resources/data/omnitest
           set -e
           tail -n 140 client-smoke.log
           if [ "$passed" != "1" ]; then echo 'World creation editor did not finish loading'; exit 1; fi
@@ -317,6 +354,10 @@ jobs:
                   assert disabled not in enabled, 'Disabled biome leaked into '+field+': '+disabled
                   print('Verified disabled biome filtered:', field, disabled)
               assert 'minecraft:plains' in biome_source['land_biomes'], 'Stable climate palette changed'
+              assert 'omnitest:glowing_grove' in biome_source['enabled_land_biomes'], 'Selected modded biome was not exported'
+              structure=json.loads(z.read('data/minecraft/worldgen/structure_set/desert_pyramids.json'))
+              assert structure['placement']['enabled'] is False, 'Structure still enabled after required biome disabled'
+              print('Verified custom biome export and biome-gated vanilla structure')
           print('Biome toggle and world preset serialization tests passed')
           PY
           # Undo the temporary test hook before publishing the source archive.
