@@ -65,8 +65,8 @@ jobs:
               assert "com/hack337/omniisle/mixin/client/StructureLandGuardMixin.class" in names
               assert "com/hack337/omniisle/client/ModdedBiomeScreen.class" in names
               assert "com/hack337/omniisle/worldgen/ModdedBiomePatches.class" in names
-              assert "com/hack337/omniisle/worldgen/BiomeShareSampler.class" in names
-              assert "com/hack337/omniisle/client/BiomeBalanceScreen.class" in names
+              assert "com/hack337/omniisle/worldgen/BiomeShareSampler.class" not in names
+              assert "com/hack337/omniisle/client/BiomeBalanceScreen.class" not in names
               land_tag = "data/omniisle/tags/worldgen/structure/land_only.json"
               assert land_tag in names
               entries = json.loads(z.read(land_tag))["values"]
@@ -221,11 +221,46 @@ jobs:
                                   throw new AssertionError("Could not select installed mod biome");
                               if (!restricted.enabledBiomeIds(BiomePreview.Category.LAND).contains("omnitest:glowing_grove"))
                                   throw new AssertionError("Mod biome missing from editor selection");
-                              if (!restricted.setTargetPercent("omnitest:glowing_grove", BiomePreview.Category.LAND, 65)
-                                      || Math.abs(restricted.targetPercent("omnitest:glowing_grove", BiomePreview.Category.LAND) - 65) > 1)
-                                  throw new AssertionError("Per-biome target percent did not update");
-                              if (!restricted.copy().biomeWeights().containsKey("omnitest:glowing_grove"))
-                                  throw new AssertionError("Copied draft dropped user biome weights");
+                              // All installed mod biomes should have fair, deterministic regions,
+                              // with NO percentage configuration or custom weight codec.
+                              for (int count : new int[] {1, 2, 4}) {
+                                  int[] appearances = new int[count + 1];
+                                  int contiguous = 0, sampled = 0;
+                                  for (int px = -3200; px <= 3200; px += 91) {
+                                      for (int pz = -3200; pz <= 3200; pz += 97) {
+                                          int chosen = com.hack337.omniisle.worldgen.ModdedBiomePatches
+                                              .index(px, pz, 123456L, count, 0);
+                                          int repeated = com.hack337.omniisle.worldgen.ModdedBiomePatches
+                                              .index(px, pz, 123456L, count, 0);
+                                          if (chosen != repeated || chosen < -1 || chosen >= count)
+                                              throw new AssertionError("Unstable/out-of-range mod biome selection");
+                                          appearances[chosen + 1]++;
+                                          if (chosen == com.hack337.omniisle.worldgen.ModdedBiomePatches
+                                                  .index(px + 4, pz, 123456L, count, 0)) contiguous++;
+                                          sampled++;
+                                          int only = com.hack337.omniisle.worldgen.ModdedBiomePatches
+                                              .modOnlyIndex(px, pz, 123456L, count, 0);
+                                          if (only < 0 || only >= count)
+                                              throw new AssertionError("Mod-only category emitted missing/vanilla biome");
+                                      }
+                                  }
+                                  for (int hits : appearances)
+                                      if (hits < 10) throw new AssertionError("Mod biome not distributed: " + java.util.Arrays.toString(appearances));
+                                  if (contiguous < sampled * 0.85)
+                                      throw new AssertionError("Mod biome boundaries are too fragmented: " + contiguous + "/" + sampled);
+                              }
+                              IslandDraft customOnly = new IslandDraft();
+                              if (!customOnly.toggleCustomBiome("omnitest:glowing_grove", BiomePreview.Category.LAND))
+                                  throw new AssertionError("Could not enable mod-only land biome");
+                              for (BiomePreview.Type biome : IslandDraft.OVERWORLD_BIOMES) {
+                                  if (biome.category == BiomePreview.Category.LAND && customOnly.isBiomeEnabled(biome)
+                                          && !customOnly.toggleBiome(biome))
+                                      throw new AssertionError("Could not disable vanilla land biome " + biome);
+                              }
+                              if (!customOnly.enabledBiomeIds(BiomePreview.Category.LAND)
+                                      .equals(java.util.List.of("omnitest:glowing_grove")))
+                                  throw new AssertionError("Mod-only biome selection retained vanilla land biomes");
+                              WorldPackBuilder.export(Path.of("omni-mod-only-biomes"), customOnly);
                               // Desert pyramids may only start when Desert is enabled.
                               if (!restricted.toggleBiome(BiomePreview.Type.DESERT))
                                   throw new AssertionError("Could not disable structure-required biome");
@@ -321,10 +356,12 @@ jobs:
                           }
                           if (!sawModdedBiome)
                               throw new AssertionError("Enabled modded biome never appeared during generation sampling");
+                          // The enabled custom biome should occupy meaningful organic regions,
+                          // without an explicit ratio/weight requirement.
                           double moddedShare = sampledModLand / (double)Math.max(1, sampledLand);
-                          if (moddedShare < 0.40 || moddedShare > 0.88)
-                              throw new AssertionError("Target 65% biome balance generated " + moddedShare);
-                          System.out.println("OMNI_SMOKE_BIOME_BALANCE_PERCENT=" + moddedShare);
+                          if (moddedShare < 0.04 || moddedShare > 0.96)
+                              throw new AssertionError("Mod biome patches absent/overwhelming: " + moddedShare);
+                          System.out.println("OMNI_SMOKE_MOD_BIOME_PATCH_COVERAGE=" + moddedShare);
                           System.out.println("OMNI_SMOKE_BIOME_SETTINGS_APPLIED");
                           phase = 5;
                       }
@@ -374,10 +411,7 @@ jobs:
           with zipfile.ZipFile(filtered) as z:
               generated=json.loads(z.read('data/omniisle/worldgen/world_preset/omniisle.json'))
               biome_source=generated['dimensions']['minecraft:overworld']['generator']['biome_source']
-              weights=biome_source.get('biome_weights',{})
-              assert weights.get('omnitest:glowing_grove', 0)>1000, weights
-              assert 'minecraft:plains' not in weights
-              print('Verified per-biome percentage serialized:',weights['omnitest:glowing_grove'])
+              assert 'biome_weights' not in biome_source, 'Removed biome percentages are still exported'
               checks={
                   'enabled_land_biomes':'minecraft:plains',
                   'enabled_shore_biomes':'minecraft:beach',
@@ -407,6 +441,16 @@ jobs:
           assert source.count(hook) == 1, 'Cannot restore production entry point'
           path.write_text(source.replace(hook, ''))
           assert not any('ClientSmokeHarness' in p.read_text() for p in Path('src/main/java').rglob('*.java'))
+          PY
+          python3 - <<'PY'
+          import json,zipfile
+          p='run/omni-mod-only-biomes/omniisle-generated.zip'
+          with zipfile.ZipFile(p) as z:
+              preset=json.loads(z.read('data/omniisle/worldgen/world_preset/omniisle.json'))
+              source=preset['dimensions']['minecraft:overworld']['generator']['biome_source']
+              assert source['enabled_land_biomes']==['omnitest:glowing_grove'], source['enabled_land_biomes']
+              assert 'biome_weights' not in source
+              print('Verified mod-only land biome in exported world preset')
           PY
           echo 'Native Forge client successfully opened and rendered the island editor'
       - name: Upload client validation log
