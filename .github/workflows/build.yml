@@ -21,7 +21,13 @@ jobs:
       - name: Fetch exact upstream sources
         run: |
           git clone --depth 1 --branch neoforge/1.21.1 https://github.com/y9hack337/OmniIsle.git /tmp/omni-neo
+          git -C /tmp/omni-neo fetch --depth 1 origin 051aba887c0c05346b8cbe6eab0e5434d6503b9c
+          git -C /tmp/omni-neo -c advice.detachedHead=false checkout --detach 051aba887c0c05346b8cbe6eab0e5434d6503b9c
+          test "$(git -C /tmp/omni-neo rev-parse HEAD)" = 051aba887c0c05346b8cbe6eab0e5434d6503b9c
           git clone --depth 1 --branch fabric/1.20.1 https://github.com/y9hack337/OmniIsle.git /tmp/omni-fabric
+          git -C /tmp/omni-fabric fetch --depth 1 origin 5f4b5bf94761d640f5351ca90cb6825c6e9f6dac
+          git -C /tmp/omni-fabric -c advice.detachedHead=false checkout --detach 5f4b5bf94761d640f5351ca90cb6825c6e9f6dac
+          test "$(git -C /tmp/omni-fabric rev-parse HEAD)" = 5f4b5bf94761d640f5351ca90cb6825c6e9f6dac
           mkdir -p src/main/java src/main/resources
           cp -R /tmp/omni-neo/src/main/java/. src/main/java/
           cp -R /tmp/omni-fabric/src/main/resources/. src/main/resources/
@@ -196,6 +202,16 @@ jobs:
               assert 'data/omniisle/worldgen/world_preset/omniisle.json' in names
               assert any(n.startswith('data/minecraft/worldgen/structure_set/') for n in names)
               print('OmniIsle editor export datapack verified:', len(names), 'files')
+          PY
+          # Undo the temporary test hook before publishing the source archive.
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('src/main/java/com/hack337/omniisle/OmniIsleMod.java')
+          source = path.read_text()
+          hook = ' MinecraftForge.EVENT_BUS.addListener(ClientSmokeHarness::onTick);'
+          assert source.count(hook) == 1, 'Cannot restore production entry point'
+          path.write_text(source.replace(hook, ''))
+          assert not any('ClientSmokeHarness' in p.read_text() for p in Path('src/main/java').rglob('*.java'))
           PY
           echo 'Native Forge client successfully opened and rendered the island editor'
       - name: Upload client validation log
