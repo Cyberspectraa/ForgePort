@@ -360,6 +360,12 @@ public final class BiomeBalanceScreen extends Screen {
 }
 """, encoding="utf-8")
 
+# The Mods chooser's original instruction occupied the same line as the new
+# Balance button. Keep the button legible at both normal and compact GUI scales.
+patch_once("client/ModdedBiomeScreen.java",
+    """        g.drawCenteredString(font, "Enable mod biomes in the chosen terrain category", width / 2, 52, 0xFFE0E0E0);""",
+    """""")
+
 patch_once("client/ModdedBiomeScreen.java",
     """        top = 67;""",
     """        top = 79;
