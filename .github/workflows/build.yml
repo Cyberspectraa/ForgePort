@@ -118,6 +118,10 @@ jobs:
           import com.hack337.omniisle.client.WorldPackBuilder;
           import com.hack337.omniisle.client.IslandDraft;
           import com.hack337.omniisle.client.BiomePreview;
+          import com.hack337.omniisle.mixin.client.CreateWorldBridge;
+          import com.hack337.omniisle.worldgen.OmniBiomeSource;
+          import com.mojang.datafixers.util.Pair;
+          import net.minecraft.server.packs.repository.PackRepository;
           import java.nio.file.Path;
           import net.minecraft.client.Minecraft;
           import net.minecraft.client.gui.components.Button;
@@ -131,6 +135,8 @@ jobs:
           import net.minecraftforge.fml.common.Mod;
           public final class ClientSmokeHarness {
               private static int phase = 0, rendered = 0, ticks = 0;
+              private static CreateWorldScreen creationScreen;
+              private static int appliedWait = 0;
               @SubscribeEvent public static void onTick(TickEvent.ClientTickEvent event) {
                   if (event.phase != TickEvent.Phase.END) return;
                   Minecraft mc = Minecraft.getInstance();
@@ -156,6 +162,7 @@ jobs:
                               && button.visible && button.active
                               && button.getMessage().getString().toLowerCase(java.util.Locale.ROOT).contains("omniisle")) {
                               phase=3;
+                              creationScreen=worldScreen;
                               button.onPress();
                               System.out.println("OMNI_SMOKE_EDITOR_BUTTON_CLICKED");
                               break;
@@ -188,11 +195,46 @@ jobs:
                               }
                               WorldPackBuilder.export(Path.of("omni-biome-filter-test"), restricted);
                               System.out.println("OMNI_SMOKE_BIOME_FILTER_EXPORTED");
+                              Pair<Path, PackRepository> pair = ((CreateWorldBridge)creationScreen)
+                                  .omniisle$getScannedPack(creationScreen.getUiState().getSettings().dataConfiguration());
+                              if (pair == null) throw new IllegalStateException("No world creation datapack staging directory");
+                              WorldPackBuilder.export(pair.getFirst(), restricted);
+                              PackRepository packs = pair.getSecond();
+                              packs.reload();
+                              String selectedId = packs.getAvailableIds().stream()
+                                  .filter(id -> id.endsWith(WorldPackBuilder.FILE_NAME)).findFirst()
+                                  .orElseThrow(() -> new IllegalStateException("Generated datapack not found after rescan"));
+                              if (!packs.getSelectedIds().contains(selectedId) && !packs.addPack(selectedId))
+                                  throw new IllegalStateException("Could not enable custom biome datapack");
+                              ((CreateWorldBridge)creationScreen).omniisle$applyPack(packs, true, configuration -> {
+                                  System.out.println("OMNI_SMOKE_BIOME_PACK_APPLY_ABORTED");
+                              });
                               System.out.println("OMNI_SMOKE_ISLAND_DATAPACK_EXPORTED");
-                          } catch (Exception e) {
+                          } catch (Throwable e) {
                               System.out.println("OMNI_SMOKE_EXPORT_FAILED");
                               e.printStackTrace();
                           }
+                      }
+                  } else if (phase == 4 && mc.screen instanceof CreateWorldScreen worldScreen) {
+                      if (++appliedWait > 1200) throw new AssertionError("World preset datapack reload timed out");
+                      var context = worldScreen.getUiState().getSettings();
+                      boolean selected = context.dataConfiguration().dataPacks().getEnabled().stream()
+                          .anyMatch(id -> id.endsWith(WorldPackBuilder.FILE_NAME));
+                      if (selected) {
+                          var biomeSource = context.selectedDimensions().overworld().getBiomeSource();
+                          if (!(biomeSource instanceof OmniBiomeSource))
+                              throw new AssertionError("World preset lost OmniIsle biome source after applying editor pack");
+                          java.util.Set<String> possible = biomeSource.possibleBiomes().stream()
+                              .flatMap(holder -> holder.unwrapKey().stream())
+                              .map(key -> key.location().toString())
+                              .collect(java.util.stream.Collectors.toSet());
+                          for (String forbidden : java.util.List.of("minecraft:plains", "minecraft:beach",
+                                  "minecraft:deep_ocean", "minecraft:frozen_river", "minecraft:dripstone_caves")) {
+                              if (possible.contains(forbidden))
+                                  throw new AssertionError("Disabled biome still possible after reload: " + forbidden);
+                          }
+                          System.out.println("OMNI_SMOKE_BIOME_SETTINGS_APPLIED");
+                          phase = 5;
                       }
                   }
               }
@@ -211,7 +253,7 @@ jobs:
           client_pid=$!
           passed=0
           for n in $(seq 1 90); do
-            if grep -q 'OMNI_SMOKE_ISLAND_DATAPACK_EXPORTED' client-smoke.log && test -s run/screenshots/omniisle-editor.png; then passed=1; break; fi
+            if grep -q 'OMNI_SMOKE_BIOME_SETTINGS_APPLIED' client-smoke.log && test -s run/screenshots/omniisle-editor.png; then passed=1; break; fi
             if ! kill -0 "$client_pid" 2>/dev/null; then break; fi
             sleep 2
           done
@@ -221,7 +263,7 @@ jobs:
           set -e
           tail -n 140 client-smoke.log
           if [ "$passed" != "1" ]; then echo 'World creation editor did not finish loading'; exit 1; fi
-          if grep -E 'MixinApplyError|InvalidInjectionException|Failed to apply mixin|OMNI_SMOKE_EXPORT_FAILED|OMNI_SMOKE_SCREENSHOT_FAILED' client-smoke.log; then exit 1; fi
+          if grep -E 'MixinApplyError|InvalidInjectionException|Failed to apply mixin|OMNI_SMOKE_EXPORT_FAILED|OMNI_SMOKE_SCREENSHOT_FAILED|OMNI_SMOKE_BIOME_PACK_APPLY_ABORTED|AssertionError' client-smoke.log; then exit 1; fi
           test -s run/screenshots/omniisle-editor.png
           python3 - <<'PY'
           import json,zipfile
