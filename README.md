@@ -38,6 +38,14 @@ OmniIsle keeps its original climate-driven distribution for vanilla biomes. The 
 
 **No biome percentage controls or weight settings are provided.** Enabling or disabling biomes is the only selection control; the mod decides the distribution based on the seed and terrain. A category can contain only modded biomes, in which case disabled vanilla entries are not regenerated. Generated datapacks no longer serialize `biome_weights`, and an existing world preset with that old property no longer changes biome proportions. New chunks follow the saved enabled-biome selection; already-generated terrain is not replaced.
 
+## Modded biome appearance and terrain surfaces
+
+A selected biome ID alone does not guarantee its intended ground blocks, trees or decorations. Minecraft separates the **biome registry** (climate, features, spawns, visual effects) from the **noise generator surface rules** (biome-specific topsoil, stones and material transitions). The OmniIsle world preset uses its own noise settings to keep the island shape.
+
+For mods using **TerraBlender 3.x on Forge 1.20.1**, OmniIsle now marks its own noise-generator settings as Overworld settings when TerraBlender is installed. This lets TerraBlender apply the other mod's registered namespace-specific surface rules to OmniIsle, rather than showing that biome's ID with inappropriate default surface blocks. TerraBlender remains **optional**; the bridge does not modify the generator of other worlds or dimensions. The integration logs `OmniIsle TerraBlender biome surface rules activated` when it runs.
+
+Surface rules are just one aspect of a biome's appearance. Mods that use a different surface-rule system, rely on their own terrain generator, require custom dimension logic, or use features with special placement predicates may still need an explicit adapter. In particular, the modded biome's **trees and configured features come from the original mod**, not from the name shown in F3. For a biome that still looks incorrect, capture the exact F3 `Biome: namespace:id`, the biome-owning mod and version, and a screenshot of the blocks and trees so its actual worldgen assets can be compared with OmniIsle.
+
 ## Cross-mod compatibility boundaries
 
 * Registered biomes from installed datapacks/mods are found in the worldgen biome registry and available for opt-in. The biome's owning mod or datapack **must remain installed** for the saved world to load.
