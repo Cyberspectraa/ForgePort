@@ -37,7 +37,13 @@ jobs:
       - name: Restore SHA-256 verified Minecraft 1.20.1 release worldgen assets
         run: python3 tools/restore_worldgen.py
       - name: Convert to native Forge 1.20.1
-        run: python3 scripts/convert.py
+        run: |
+          python3 scripts/convert.py
+          python3 - <<'PY'
+          from pathlib import Path
+          chooser=Path('src/main/java/com/hack337/omniisle/client/ModdedBiomeScreen.java').read_text()
+          assert '"deferred_placeholder".equals(id.getPath())' in chooser, 'TerraBlender internal sentinel offered in picker'
+          PY
       - name: Compile and reobfuscate
         run: gradle build --stacktrace --console=plain --no-daemon
       - name: Upload Forge mod JAR
@@ -219,6 +225,8 @@ jobs:
                                       throw new AssertionError("Biome toggle failed: " + disabled);
                                   }
                               }
+                              if (restricted.toggleCustomBiome("terrablender:deferred_placeholder", BiomePreview.Category.LAND))
+                                  throw new AssertionError("TerraBlender's internal routing placeholder must not be selectable");
                               if (!restricted.toggleCustomBiome("omnitest:glowing_grove", BiomePreview.Category.LAND))
                                   throw new AssertionError("Could not select installed mod biome");
                               if (!restricted.enabledBiomeIds(BiomePreview.Category.LAND).contains("omnitest:glowing_grove"))
