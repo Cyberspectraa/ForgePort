@@ -134,7 +134,7 @@ jobs:
             "spawners": {},
             "spawn_costs": {},
             "carvers": {"air": []},
-            "features": [[], [], [], [], [], [], [], [], [], [], []]
+            "features": [[], [], [], [], [], [], [], [], [], ["minecraft:trees_plains"], []]
           }
           JSON
           cat > src/main/java/com/hack337/omniisle/ClientSmokeHarness.java <<'JAVA'
@@ -347,7 +347,15 @@ jobs:
                                           String id = biome.unwrapKey().orElseThrow().location().toString();
                                           if (!possible.contains(id))
                                               throw new AssertionError("Biome selector returned disabled biome: " + id);
-                                          if (id.equals("omnitest:glowing_grove")) sawModdedBiome = true;
+                                          if (id.equals("omnitest:glowing_grove")) {
+                                              sawModdedBiome = true;
+                                              // Verify we receive the biome's actual registered decoration
+                                              // data, not only the biome's debug-screen identifier.
+                                              int features = biome.value().getGenerationSettings().features()
+                                                  .stream().mapToInt(java.util.Collection::size).sum();
+                                              if (features == 0)
+                                                  throw new AssertionError("Mod biome ID loaded without its own trees/features");
+                                          }
                                           if (continent == 0.6 && y == 64) {
                                               sampledLand++;
                                               if (id.equals("omnitest:glowing_grove")) sampledModLand++;
