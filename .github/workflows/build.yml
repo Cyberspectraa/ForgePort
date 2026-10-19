@@ -352,7 +352,7 @@ jobs:
                                               // Verify we receive the biome's actual registered decoration
                                               // data, not only the biome's debug-screen identifier.
                                               int features = biome.value().getGenerationSettings().features()
-                                                  .stream().mapToInt(java.util.Collection::size).sum();
+                                                  .stream().mapToInt(entry -> entry.size()).sum();
                                               if (features == 0)
                                                   throw new AssertionError("Mod biome ID loaded without its own trees/features");
                                           }
