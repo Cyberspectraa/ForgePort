@@ -226,6 +226,8 @@ public abstract class TerraBlenderSurfaceMixin {
             Object overworld = Enum.valueOf((Class<? extends Enum>) region.asSubclass(Enum.class), "OVERWORLD");
             Method setter = extended.getMethod("setRegionType", region);
             setter.invoke(actualSettings, overworld);
+            org.slf4j.LoggerFactory.getLogger("OmniIsle").info(
+                "OmniIsle TerraBlender biome surface rules activated");
         } catch (ReflectiveOperationException | LinkageError exception) {
             // Optional integration: a different TerraBlender version must not
             // crash or invalidate worlds that are otherwise working.
