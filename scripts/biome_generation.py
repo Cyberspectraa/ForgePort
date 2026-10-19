@@ -174,4 +174,74 @@ patch_once("client/WorldPackBuilder.java",
                 && eligibleBiomes
                 && (generic || state.isAnyRequiredBiomeEnabled(definition.biomes))
                 && (!definition.deepDark || state.isBiomeEnabled(BiomePreview.Type.DEEP_DARK));""")
+
+# A biome ID, by itself, cannot provide biome-specific dirt, rock or custom
+# surface materials. TerraBlender uses an optional extended NoiseGeneratorSettings
+# mixin to attach namespace-aware surface rules to its Overworld generator. Our
+# bespoke OmniIsle noise settings were never marked as an Overworld generator,
+# so surface rules from mods depending on TerraBlender did not run.
+#
+# Fix: mark ONLY OmniIsle's chunk generator settings as Overworld terrain
+# before chunks generate. Reflection keeps TerraBlender an optional dependency.
+# Noise density and island shape are not modified.
+surface = JAVA / "mixin/client/TerraBlenderSurfaceMixin.java"
+surface.write_text("""package com.hack337.omniisle.mixin.client;
+
+import com.hack337.omniisle.worldgen.OmniBiomeSource;
+import java.lang.reflect.Method;
+import net.minecraft.core.Holder;
+import net.minecraft.world.level.biome.BiomeSource;
+import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
+import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
+import net.minecraftforge.fml.ModList;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+/**
+ * Opt-in interop with TerraBlender 3.x, which gates its biome surface rules
+ * behind an Overworld region marker on NoiseGeneratorSettings.
+ *
+ * OmniIsle uses a custom registered noise settings entry; without this marker,
+ * namespace-specific ground/topsoil rules are silently skipped despite a
+ * correctly reported biome ID. Never modify non-OmniIsle generators.
+ */
+@Mixin(NoiseBasedChunkGenerator.class)
+public abstract class TerraBlenderSurfaceMixin {
+    @Inject(method = "<init>", at = @At("RETURN"))
+    private void omniisle$enableModdedSurfaces(
+        BiomeSource biomeSource,
+        Holder<NoiseGeneratorSettings> settings,
+        CallbackInfo ci
+    ) {
+        if (!(biomeSource instanceof OmniBiomeSource)) return;
+        if (!ModList.get().isLoaded("terrablender")) return;
+        try {
+            Class<?> extended = Class.forName("terrablender.worldgen.IExtendedNoiseGeneratorSettings");
+            Class<?> region = Class.forName("terrablender.api.RegionType");
+            NoiseGeneratorSettings actualSettings = settings.value();
+            if (!extended.isInstance(actualSettings)) return;
+            @SuppressWarnings({"unchecked", "rawtypes"})
+            Object overworld = Enum.valueOf((Class<? extends Enum>) region.asSubclass(Enum.class), "OVERWORLD");
+            Method setter = extended.getMethod("setRegionType", region);
+            setter.invoke(actualSettings, overworld);
+        } catch (ReflectiveOperationException | LinkageError exception) {
+            // Optional integration: a different TerraBlender version must not
+            // crash or invalidate worlds that are otherwise working.
+            org.slf4j.LoggerFactory.getLogger("OmniIsle").warn(
+                "TerraBlender surface-rule bridge unavailable; modded biome surfaces may use vanilla blocks",
+                exception);
+        }
+    }
+}
+""", encoding="utf-8")
+
+mixins = RES / "omniisle.client.mixins.json"
+import json
+configuration = json.loads(mixins.read_text(encoding="utf-8"))
+configuration["mixins"] = list(dict.fromkeys(
+    [*configuration.get("mixins", []), "TerraBlenderSurfaceMixin"]))
+mixins.write_text(json.dumps(configuration, indent=2) + "\n", encoding="utf-8")
+
 print("Original biome selection preserved; improved organic mod biome regions and mod-only categories.")
