@@ -42,7 +42,8 @@ patch_once("client/IslandDraft.java",
     "    public boolean isStructureEnabled(StructureOption option) {",
     """    /** A mod biome may be assigned to precisely one terrain category. */
     public boolean toggleCustomBiome(String id, BiomePreview.Category category) {
-        if (id == null || !id.contains(":") || id.startsWith("minecraft:")) return false;
+        if (id == null || !id.contains(":") || id.startsWith("minecraft:")
+                || id.equals("terrablender:deferred_placeholder")) return false;
         if (customBiomes.getOrDefault(category, new java.util.LinkedHashSet<>()).contains(id)) {
             if (enabledBiomes(category).isEmpty() && customBiomeIds(category).size() == 1) return false;
             customBiomes.get(category).remove(id);
@@ -239,6 +240,10 @@ public final class ModdedBiomeScreen extends Screen {
             .registryOrThrow(Registries.BIOME);
         available = registry.keySet().stream()
             .filter(id -> !"minecraft".equals(id.getNamespace()))
+            // TerraBlender's deferred_placeholder is an internal biome routing
+            // sentinel, not a real user-selectable biome.
+            .filter(id -> !("terrablender".equals(id.getNamespace())
+                && "deferred_placeholder".equals(id.getPath())))
             .sorted(Comparator.comparing(ResourceLocation::toString)).toList();
         panelWidth = Math.min(420, width - 24);
         panelHeight = Math.max(65, height - 117);
