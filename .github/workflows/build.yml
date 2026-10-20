@@ -638,6 +638,10 @@ jobs:
             src/main/java
             src/main/resources
             scripts/convert.py
+            scripts/modded_biomes.py
+            scripts/biome_generation.py
+            scripts/feature_cycle_compat.py
+            tools/restore_worldgen.py
       - name: Upload project sources on failure
         if: failure()
         uses: actions/upload-artifact@v4
