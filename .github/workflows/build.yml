@@ -302,7 +302,7 @@ jobs:
                               var biomeKeyB = net.minecraft.resources.ResourceKey.create(
                                   net.minecraft.core.registries.Registries.BIOME,
                                   new net.minecraft.resources.ResourceLocation("omnitest", "feature_cycle_b"));
-                              var cycleBiomes = java.util.List.of(
+                              java.util.List<net.minecraft.core.Holder<net.minecraft.world.level.biome.Biome>> cycleBiomes = java.util.List.of(
                                   registry.getHolderOrThrow(biomeKeyA), registry.getHolderOrThrow(biomeKeyB));
                               boolean foundCycle = false;
                               try {
