@@ -406,4 +406,8 @@ exec(compile(biome_patch_file.read_text(encoding="utf-8"), str(biome_patch_file)
 generation_patch_file=Path("scripts/biome_generation.py")
 exec(compile(generation_patch_file.read_text(encoding="utf-8"), str(generation_patch_file), "exec"))
 
+# Conflict-safe feature sequencing for mixed vanilla/modded OmniIsle biome palettes.
+feature_cycle_patch_file=Path("scripts/feature_cycle_compat.py")
+exec(compile(feature_cycle_patch_file.read_text(encoding="utf-8"), str(feature_cycle_patch_file), "exec"))
+
 
