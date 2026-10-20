@@ -381,7 +381,7 @@ jobs:
                               throw new AssertionError("Ocean/mixed structures incorrectly forced onto land");
                           System.out.println("OMNI_SMOKE_GENERIC_STRUCTURE_CLASSIFICATION_OK");
                           try {
-                              var generator = context.selectedDimensions().overworld().getGenerator();
+                              var generator = context.selectedDimensions().overworld();
                               var orderingField = net.minecraft.world.level.chunk.ChunkGenerator.class
                                   .getDeclaredField("featuresPerStep");
                               orderingField.setAccessible(true);
