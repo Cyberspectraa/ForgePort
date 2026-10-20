@@ -72,6 +72,8 @@ jobs:
               assert "com/hack337/omniisle/mixin/client/TerraBlenderSurfaceMixin.class" in names
               assert "com/hack337/omniisle/client/ModdedBiomeScreen.class" in names
               assert "com/hack337/omniisle/worldgen/ModdedBiomePatches.class" in names
+              assert "com/hack337/omniisle/worldgen/OmniFeatureCycleRecovery.class" in names
+              assert "com/hack337/omniisle/mixin/client/ChunkGeneratorFeatureCycleMixin.class" in names
               assert "com/hack337/omniisle/worldgen/BiomeShareSampler.class" not in names
               assert "com/hack337/omniisle/client/BiomeBalanceScreen.class" not in names
               land_tag = "data/omniisle/tags/worldgen/structure/land_only.json"
@@ -84,6 +86,7 @@ jobs:
               assert all(entry["required"] is False for entry in entries)
               assert "StructureLandGuardMixin" in json.loads(z.read("omniisle.client.mixins.json")).get("mixins", [])
               assert "TerraBlenderSurfaceMixin" in json.loads(z.read("omniisle.client.mixins.json")).get("mixins", [])
+              assert "ChunkGeneratorFeatureCycleMixin" in json.loads(z.read("omniisle.client.mixins.json")).get("mixins", [])
               config=json.loads(z.read("omniisle.client.mixins.json"))
               assert config["compatibilityLevel"]=="JAVA_17"
               assert config["refmap"]=="omniisle.refmap.json"
@@ -143,6 +146,16 @@ jobs:
             "features": [[], [], [], [], [], [], [], [], [], ["minecraft:trees_plains"], []]
           }
           JSON
+          python3 - <<'PY'
+          import json,pathlib
+          p=pathlib.Path('src/main/resources/data/omnitest/worldgen/biome')
+          data=json.loads((p/'glowing_grove.json').read_text())
+          for name, features in [('feature_cycle_a', ['minecraft:trees_plains','minecraft:trees_snowy']),
+                                 ('feature_cycle_b', ['minecraft:trees_snowy','minecraft:trees_plains'])]:
+              copy=json.loads(json.dumps(data))
+              copy['features'][9]=features
+              (p/(name+'.json')).write_text(json.dumps(copy))
+          PY
           cat > src/main/java/com/hack337/omniisle/ClientSmokeHarness.java <<'JAVA'
           package com.hack337.omniisle;
           import com.hack337.omniisle.client.OmniIsleEditorScreen;
@@ -278,6 +291,39 @@ jobs:
                                   .compositeAccess().registryOrThrow(net.minecraft.core.registries.Registries.BIOME);
                               if (!registry.containsKey(new net.minecraft.resources.ResourceLocation("omnitest", "glowing_grove")))
                                   throw new AssertionError("Installed custom biome not discovered by world creator");
+                              // Both test mod biomes use the same tree features in opposing orders.
+                              // Their combination reproduces FeatureSorter's real crash class.
+                              if (!restricted.toggleCustomBiome("omnitest:feature_cycle_a", BiomePreview.Category.LAND)
+                                      || !restricted.toggleCustomBiome("omnitest:feature_cycle_b", BiomePreview.Category.LAND))
+                                  throw new AssertionError("Feature cycle test biomes not selectable");
+                              var biomeKeyA = net.minecraft.resources.ResourceKey.create(
+                                  net.minecraft.core.registries.Registries.BIOME,
+                                  new net.minecraft.resources.ResourceLocation("omnitest", "feature_cycle_a"));
+                              var biomeKeyB = net.minecraft.resources.ResourceKey.create(
+                                  net.minecraft.core.registries.Registries.BIOME,
+                                  new net.minecraft.resources.ResourceLocation("omnitest", "feature_cycle_b"));
+                              var cycleBiomes = java.util.List.of(
+                                  registry.getHolderOrThrow(biomeKeyA), registry.getHolderOrThrow(biomeKeyB));
+                              boolean foundCycle = false;
+                              try {
+                                  net.minecraft.world.level.biome.FeatureSorter.buildFeaturesPerStep(cycleBiomes,
+                                      holder -> holder.value().getGenerationSettings().features(), true);
+                              } catch (IllegalStateException expected) {
+                                  foundCycle = expected.getMessage().contains("Feature order cycle found");
+                              }
+                              if (!foundCycle)
+                                  throw new AssertionError("Synthetic modded biome feature cycle not reproduced");
+                              var reordered = com.hack337.omniisle.worldgen.OmniFeatureCycleRecovery.recover(
+                                  cycleBiomes, holder -> holder.value().getGenerationSettings().features());
+                              java.util.Set<net.minecraft.world.level.levelgen.placement.PlacedFeature> preserved =
+                                  java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+                              reordered.forEach(step -> preserved.addAll(step.features()));
+                              for (var sourceBiome : cycleBiomes)
+                                  for (var featureGroup : sourceBiome.value().getGenerationSettings().features())
+                                      for (var feature : featureGroup)
+                                          if (!preserved.contains(feature.value()))
+                                              throw new AssertionError("Feature order recovery discarded a modded feature");
+                              System.out.println("OMNI_SMOKE_FEATURE_CYCLE_REPAIRED");
                               WorldPackBuilder.export(Path.of("omni-biome-filter-test"), restricted);
                               System.out.println("OMNI_SMOKE_BIOME_FILTER_EXPORTED");
                               Pair<Path, PackRepository> pair = ((CreateWorldBridge)creationScreen)
@@ -334,6 +380,22 @@ jobs:
                                   || omniSource.allowsLandOnly(net.minecraft.core.HolderSet.direct(forest, ocean)))
                               throw new AssertionError("Ocean/mixed structures incorrectly forced onto land");
                           System.out.println("OMNI_SMOKE_GENERIC_STRUCTURE_CLASSIFICATION_OK");
+                          try {
+                              var generator = context.selectedDimensions().overworld().getGenerator();
+                              var orderingField = net.minecraft.world.level.chunk.ChunkGenerator.class
+                                  .getDeclaredField("featuresPerStep");
+                              orderingField.setAccessible(true);
+                              @SuppressWarnings("unchecked")
+                              java.util.function.Supplier<java.util.List<net.minecraft.world.level.biome.FeatureSorter.StepFeatureData>>
+                                  sortedSupplier = (java.util.function.Supplier<java.util.List<net.minecraft.world.level.biome.FeatureSorter.StepFeatureData>>)
+                                      orderingField.get(generator);
+                              var resolved = sortedSupplier.get();
+                              if (resolved.isEmpty())
+                                  throw new AssertionError("No biome features in recovered generator");
+                              System.out.println("OMNI_SMOKE_WORLD_GENERATOR_FEATURES_SORTED");
+                          } catch (ReflectiveOperationException exception) {
+                              throw new AssertionError("Could not inspect OmniIsle generator feature list", exception);
+                          }
                           for (String forbidden : java.util.List.of("minecraft:plains", "minecraft:beach",
                                   "minecraft:deep_ocean", "minecraft:frozen_river", "minecraft:dripstone_caves", "minecraft:desert")) {
                               if (possible.contains(forbidden))
@@ -470,6 +532,9 @@ jobs:
               assert 'biome_weights' not in source
               print('Verified mod-only land biome in exported world preset')
           PY
+          grep -Fq 'OMNI_SMOKE_FEATURE_CYCLE_REPAIRED' client-smoke.log
+          grep -Fq 'OMNI_SMOKE_WORLD_GENERATOR_FEATURES_SORTED' client-smoke.log
+          grep -Fq 'Resolved incompatible modded biome feature order for OmniIsle' client-smoke.log
           echo 'Native Forge client successfully opened and rendered the island editor'
       - name: Upload client validation log
         if: always()
