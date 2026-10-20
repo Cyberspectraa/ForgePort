@@ -38,6 +38,26 @@ OmniIsle keeps its original climate-driven distribution for vanilla biomes. The 
 
 **No biome percentage controls or weight settings are provided.** Enabling or disabling biomes is the only selection control; the mod decides the distribution based on the seed and terrain. A category can contain only modded biomes, in which case disabled vanilla entries are not regenerated. Generated datapacks no longer serialize `biome_weights`, and an existing world preset with that old property no longer changes biome proportions. New chunks follow the saved enabled-biome selection; already-generated terrain is not replaced.
 
+## Feature-order cycle compatibility (mixed Forge modpacks)
+
+Combining installed modded biomes with vanilla biomes can expose Minecraft's
+`FeatureSorter` failure (`Feature order cycle found`). This was reproduced
+by the real crash reports for `iceandfire:dread_forest` and
+`minecraft:frozen_river` with Ice and Fire Community Edition 1.2.10.
+
+OmniIsle keeps Minecraft's original feature order whenever it is valid. If a
+feature-order cycle occurs in **an OmniIsle world only**, the fallback
+constructs a deterministic, per-decoration-stage feature order from all enabled
+biomes. It prioritizes original vanilla precedence and retains every feature
+even if a conflicting ordering constraint must be skipped. No biome, vegetation,
+or structure is disabled, and non-OmniIsle worlds retain vanilla behavior.
+The server logs the number of ordering constraints skipped.
+
+Regression coverage creates two deliberately conflicting registered mod biomes,
+checks that vanilla `FeatureSorter` fails, and verifies recovery retains all
+their placed features. Real-world validation should also be performed with the
+original Ice and Fire Community Edition mod and the player's other worldgen mods.
+
 ## Modded biome appearance and terrain surfaces
 
 A selected biome ID alone does not guarantee its intended ground blocks, trees or decorations. Minecraft separates the **biome registry** (climate, features, spawns, visual effects) from the **noise generator surface rules** (biome-specific topsoil, stones and material transitions). The OmniIsle world preset uses its own noise settings to keep the island shape.
