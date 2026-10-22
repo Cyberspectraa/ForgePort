@@ -73,6 +73,7 @@ jobs:
               assert "com/hack337/omniisle/client/ModdedBiomeScreen.class" in names
               assert "com/hack337/omniisle/worldgen/ModdedBiomePatches.class" in names
               assert "com/hack337/omniisle/worldgen/AutomaticBiomeReplacements.class" in names
+              assert "com/hack337/omniisle/worldgen/CoastalBiomeBands.class" in names
               assert "com/hack337/omniisle/client/AutomaticOverworldBiomes.class" in names
               assert "com/hack337/omniisle/worldgen/OmniFeatureCycleRecovery.class" in names
               assert "com/hack337/omniisle/mixin/client/ChunkGeneratorFeatureCycleMixin.class" in names
@@ -277,6 +278,28 @@ jobs:
                                       1234L, 0) != -1)
                                   throw new AssertionError("Hot rainforest may not replace snowy plains");
                               System.out.println("OMNI_SMOKE_NATIVE_REGION_MOD_REPLACEMENT_OK");
+                              // Coastline remains sand/snowy beach on the outer
+                              // shelf even when a biome mod supplies Tidepools.
+                              if (!com.hack337.omniisle.worldgen.CoastalBiomeBands.preserveNativeRim(-0.20)
+                                      || !com.hack337.omniisle.worldgen.CoastalBiomeBands.preserveNativeRim(-0.10)
+                                      || com.hack337.omniisle.worldgen.CoastalBiomeBands.preserveNativeRim(-0.05)
+                                      || com.hack337.omniisle.worldgen.CoastalBiomeBands.preserveNativeRim(0.2))
+                                  throw new AssertionError("Seaward beach rim was not protected");
+                              for (int dx : new int[] {-1200, 0, 1200}) {
+                                  var northern = BiomePreview.surface(0.32, dx, -2100, 0L);
+                                  var southern = BiomePreview.surface(0.32, dx, 2100, 0L);
+                                  if (northern != BiomePreview.Type.SNOWY_PLAINS
+                                          && northern != BiomePreview.Type.TAIGA
+                                          && northern != BiomePreview.Type.JAGGED_PEAKS)
+                                      throw new AssertionError("North is not cold: " + northern);
+                                  if (southern != BiomePreview.Type.DESERT
+                                          && southern != BiomePreview.Type.BADLANDS)
+                                      throw new AssertionError("South is not arid: " + southern);
+                              }
+                              if (BiomePreview.surface(0.0, 0, 0, 0L).category
+                                      != BiomePreview.Category.SHORE)
+                                  throw new AssertionError("Island beach band was lost in the preview");
+                              System.out.println("OMNI_SMOKE_BEACH_AND_LATITUDE_OK");
                               // Every explicitly included replacement gets one broad
                               // native region when enough native slots are enabled.
                               var baseIds = automatic.enabledBiomes(BiomePreview.Category.LAND)
@@ -589,6 +612,7 @@ jobs:
               print('Verified mod-only land biome in exported world preset')
           PY
           grep -Fq 'OMNI_SMOKE_NATIVE_REGION_MOD_REPLACEMENT_OK' client-smoke.log
+          grep -Fq 'OMNI_SMOKE_BEACH_AND_LATITUDE_OK' client-smoke.log
           grep -Fq 'OMNI_SMOKE_AUTOMATIC_OVERWORLD_BIOMES_OK' client-smoke.log
           grep -Fq 'OMNI_SMOKE_FEATURE_CYCLE_REPAIRED' client-smoke.log
           grep -Fq 'OMNI_SMOKE_WORLD_GENERATOR_FEATURES_SORTED' client-smoke.log
@@ -762,6 +786,7 @@ jobs:
             scripts/feature_cycle_compat.py
             scripts/automatic_biome_replacements.py
             scripts/coherent_modded_biomes.py
+            scripts/coastal_latitude.py
             scripts/verify_modpack_compat.py
             tools/restore_worldgen.py
       - name: Upload project sources on failure
