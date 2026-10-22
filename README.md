@@ -108,6 +108,33 @@ OmniIsle was evaluated against these exact user-provided Forge 1.20.1 JARs:
 
 Run `scripts/verify_modpack_compat.py` to download matching public mod JARs with their uploaded SHA-512 fingerprints into a temporary CI test directory; the workflow uses them to test real Forge server startup and inspect the saved preset. These checks do **not** guarantee every road, slab or vegetation placement behaves identically to each standalone mod.
 
+## Organic modded biomes and automatic Overworld replacements
+
+Optional modded biomes now use **larger, approximately 1,100-block warped
+regions** rather than the former 310-block independent patch grid. This
+reduces the patchwork effect in the editor and worldgen; optional modded
+biomes are still only generated when explicitly selected.
+
+**Blooming Biosphere 1.1.0 is different:** its datapack explicitly replaces
+the Overworld biome distribution. With that mod installed, OmniIsle includes
+its seven Overworld variants **automatically**, aligned with matching
+selected vanilla climate regions rather than assigned random isolated cells.
+The mappings cover its oak woodland, autumnal forest, marsh, rainforest,
+chaparral, snowy cherry grove and tidepools biomes. They are not separate
+Mods-tab selections. Disabling the associated vanilla biome also prevents
+the corresponding automatic variant from being introduced, preserving
+per-world biome opt-outs. The original island geometry and coastal placement
+remain OmniIsle-controlled rather than replacing its world generator.
+
+This integration is deliberately **opt-in per recognized mod**, not a blanket
+rule that all registry biomes should generate: other mods may register biomes
+for separate dimensions, structures or disabled content. New biomes from
+such mods remain selectable in the Mods tab unless their owning mod has
+an explicit Overworld replacement integration.
+
+The editor preview uses the automatic climate-family mapping too. Existing
+worlds are not retroactively repainted; test on a new world.
+
 ## Cross-mod compatibility boundaries
 
 * Registered biomes from installed datapacks/mods are found in the worldgen biome registry and available for opt-in. The biome's owning mod or datapack **must remain installed** for the saved world to load.
