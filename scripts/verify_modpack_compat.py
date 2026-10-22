@@ -133,13 +133,18 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("target", type=pathlib.Path)
     p.add_argument("--client", action="store_true")
+    p.add_argument("--only", default="", help="Exact single uploaded JAR filename for focused tests")
+    p.add_argument("--skip-architectury", action="store_true")
     args = p.parse_args()
     args.target.mkdir(parents=True, exist_ok=True)
     for filename, sha512, slug, client_only in USER_UPLOADS:
+        if args.only and filename != args.only:
+            continue
         if client_only and not args.client:
             continue
         install_one(filename, sha512, slug, args.target)
-    architectury(args.target)
+    if not args.skip_architectury:
+        architectury(args.target)
     print("All uploaded worldgen mods staged for", "client" if args.client else "server", flush=True)
 
 if __name__ == "__main__":
