@@ -41,6 +41,70 @@ public final class ModdedBiomePatches {
     }
 
     /**
+     * Allocate a whole native climate region to each compatible selected mod
+     * biome first, rather than rolling independently for each region. This
+     * keeps islands legible and prevents a selected biome from being silently
+     * starved by a random roll when many new biomes are enabled.
+     *
+     * If the player enables fewer native biome families than selected mod
+     * biomes there cannot be a unique native region for each one without
+     * splitting it. In that case native regions remain intact, and the first
+     * compatible candidates are used. No tiny synthetic patches are made.
+     */
+    public static int forNativeRegion(String nativeId, List<String> nativeIds,
+            List<String> mods, long seed, int category) {
+        if (nativeIds.isEmpty() || mods.isEmpty()) return -1;
+        java.util.ArrayList<String> natives = new java.util.ArrayList<>(nativeIds);
+        natives.removeIf(id -> !id.startsWith("minecraft:"));
+        natives.sort(String::compareTo);
+        if (natives.isEmpty()) return -1;
+        int[] assignment = new int[natives.size()];
+        java.util.Arrays.fill(assignment, -1);
+        for (int mod = 0; mod < mods.size(); mod++) {
+            String modId = mods.get(mod);
+            int desired = climate(modId), best = -1;
+            long bestScore = Long.MIN_VALUE;
+            for (int nativeIndex = 0; nativeIndex < natives.size(); nativeIndex++) {
+                if (assignment[nativeIndex] != -1) continue;
+                String name = natives.get(nativeIndex);
+                int nativeClimate = climate(name);
+                if (desired != 0 && nativeClimate != 0 && desired != nativeClimate)
+                    continue;
+                // Matching ecological names prefer the appropriate vanilla
+                // climate slot. Common climates win ties over unusual micro
+                // districts like mushroom fields, preserving vanilla specials.
+                long match = 0;
+                String modPath = modId.substring(modId.indexOf(':') + 1);
+                String path = name.substring(name.indexOf(':') + 1);
+                if (contains(modPath, "forest", "woodland") && contains(path, "forest", "birch"))
+                    match += 1_000_000L;
+                if (contains(modPath, "snow", "frozen") && contains(path, "snow", "frozen"))
+                    match += 1_000_000L;
+                if (contains(modPath, "rainforest", "tropic") && contains(path, "jungle"))
+                    match += 1_000_000L;
+                if (contains(modPath, "marsh", "swamp") && contains(path, "swamp"))
+                    match += 1_000_000L;
+                if (contains(modPath, "chaparral", "arid") && contains(path, "savanna", "badlands"))
+                    match += 1_000_000L;
+                if (contains(modPath, "tidepool", "shore", "beach") && contains(path, "beach"))
+                    match += 1_000_000L;
+                if (contains(path, "mushroom", "ice_spikes", "deep_dark"))
+                    match -= 3_000_000L;
+                long tie = Math.floorMod(scramble(seed ^ name.hashCode() * 239017L
+                    ^ modId.hashCode() * 451L), 100_000L);
+                long score = match + tie;
+                if (score > bestScore) {
+                    bestScore = score;
+                    best = nativeIndex;
+                }
+            }
+            if (best >= 0) assignment[best] = mod;
+        }
+        int position = natives.indexOf(nativeId);
+        return position >= 0 ? assignment[position] : -1;
+    }
+
+    /**
      * Cold / mild / hot grouping. Unknown mod names stay eligible rather than
      * silently suppressing a biome whose climate naming we don't recognise.
      * This is only a conservative broad-climate check, not fake biome metadata.
@@ -112,7 +176,16 @@ patch_once("worldgen/OmniBiomeSource.java",
         List<String> ids = extra.stream().map(holder -> holder.unwrapKey()
             .map(key -> key.location().toString()).orElse("")).toList();
         String nativeId = base.unwrapKey().map(key -> key.location().toString()).orElse("");
-        int index = ModdedBiomePatches.forBase(nativeId, ids, biomeSeed, category);
+        List<Holder<Biome>> group = switch (category) {
+            case 0 -> enabledLandBiomes;
+            case 1 -> enabledShoreBiomes;
+            case 2 -> enabledOceanBiomes;
+            case 3 -> enabledRiverBiomes;
+            default -> enabledCaveBiomes;
+        };
+        List<String> nativeIds = group.stream().map(holder -> holder.unwrapKey()
+            .map(key -> key.location().toString()).orElse("")).toList();
+        int index = ModdedBiomePatches.forNativeRegion(nativeId, nativeIds, ids, biomeSeed, category);
         return index < 0 ? base : extra.get(index);""")
 patch_once("client/IslandDraft.java",
     """        int index = enabledBiomes(vanilla.category).isEmpty()
@@ -122,8 +195,10 @@ patch_once("client/IslandDraft.java",
                 (int)worldX, (int)worldZ, biomeSeed, mods.size(), vanilla.category.ordinal());
         if (index < 0) return vanilla.color;""",
     """        if (enabledBiomes(vanilla.category).isEmpty()) return vanilla.color;
-        int index = com.hack337.omniisle.worldgen.ModdedBiomePatches.forBase(
-            vanilla.biomeId(), java.util.List.copyOf(mods), biomeSeed, vanilla.category.ordinal());
+        int index = com.hack337.omniisle.worldgen.ModdedBiomePatches.forNativeRegion(
+            vanilla.biomeId(), enabledBiomes(vanilla.category).stream()
+                .map(BiomePreview.Type::biomeId).toList(),
+            java.util.List.copyOf(mods), biomeSeed, vanilla.category.ordinal());
         if (index < 0) return vanilla.color;""")
 
 # A mod that deliberately replaces minecraft:forest via data/minecraft/
