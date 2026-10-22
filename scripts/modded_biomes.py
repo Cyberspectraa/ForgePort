@@ -141,6 +141,22 @@ patch_once("client/WorldPackBuilder.java",
                     GSON.toJson(overworldTag) + "\\n");
             }""")
 
+# Biome overhaul datapacks (such as Blooming Biosphere 1.1.0) can define
+# data/minecraft/dimension/overworld.json, overriding the chosen OmniIsle
+# generator even when the world preset was selected correctly. The player's
+# generated world datapack is the highest priority for this world, so write
+# a dimension entry that matches the selected OmniIsle preset exactly.
+# This is NEVER baked globally into the OmniIsle mod, avoiding changing
+# ordinary Vanilla/Blooming worlds.
+patch_once("client/WorldPackBuilder.java",
+    """            putEntry(zip, "data/omniisle/worldgen/world_preset/omniisle.json", createPresetJson(state));""",
+    """            String presetJson = createPresetJson(state);
+            putEntry(zip, "data/omniisle/worldgen/world_preset/omniisle.json", presetJson);
+            JsonObject overworldDimension = JsonParser.parseString(presetJson).getAsJsonObject()
+                .getAsJsonObject("dimensions").getAsJsonObject("minecraft:overworld");
+            putEntry(zip, "data/minecraft/dimension/overworld.json",
+                GSON.toJson(overworldDimension) + "\\n");""")
+
 # Generated terrain, preview and structure compatibility share the same stable
 # biome-patch choice. Each enabled mod biome gets an organic-looking patch of
 # land/ocean/etc without overriding vanilla palette definitions.
