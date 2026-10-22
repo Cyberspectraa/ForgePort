@@ -58,6 +58,36 @@ checks that vanilla `FeatureSorter` fails, and verifies recovery retains all
 their placed features. Real-world validation should also be performed with the
 original Ice and Fire Community Edition mod and the player's other worldgen mods.
 
+## Native-region modded biomes and automatic vanilla replacements
+
+The OmniIsle biome editor now integrates selected extra modded biomes into its
+**existing broad, curving native biome regions** rather than painting a separate
+310-block Voronoi grid over the island. When there are enough enabled native
+climate slots, each selected mod biome occupies a whole compatible native
+region, so the island retains the readable climate-zone layout seen with
+vanilla biomes. Very large modded palettes can exceed the available native
+slots; preserving broad regions takes priority over forcing every installed
+biome to appear as a tiny patch. Mod-only categories instead use broader
+roughly 1,500-block softly warped regions in both the editor preview and world.
+
+Mods replacing the registered data for an existing `minecraft:` biome ID (for
+example a replacement `data/minecraft/worldgen/biome/forest.json`) are
+**already automatic**—that vanilla registry ID keeps the new decorations,
+climate and other data. Mods that explicitly include *new biome IDs* in their
+own `data/minecraft/dimension/overworld.json` multi-noise biome map (as
+Blooming Biosphere does) are now automatically imported as Overworld biomes
+without requiring manual checkboxes. Such automatically included entries
+are omitted from the manual Mods tab. A mod defining entirely separate
+dimensions does **not** have those biomes automatically injected into OmniIsle.
+Manual opt-in remains for extra biomes not declared in an Overworld map.
+
+This integration reuses **OmniIsle's** original terrain/climate boundaries;
+it does not recreate the other mod's exact climate-noise parameter ranges.
+The 1.20.1 Forge world-specific datapack still retains OmniIsle as the
+Overworld generator and the existing biome/structure restrictions. Create a
+new world or generate new chunks to compare regions; existing chunks will not
+be reshaped retroactively.
+
 ## Modded biome appearance and terrain surfaces
 
 A selected biome ID alone does not guarantee its intended ground blocks, trees or decorations. Minecraft separates the **biome registry** (climate, features, spawns, visual effects) from the **noise generator surface rules** (biome-specific topsoil, stones and material transitions). The OmniIsle world preset uses its own noise settings to keep the island shape.
