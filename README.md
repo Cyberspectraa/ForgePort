@@ -108,6 +108,27 @@ OmniIsle was evaluated against these exact user-provided Forge 1.20.1 JARs:
 
 Run `scripts/verify_modpack_compat.py` to download matching public mod JARs with their uploaded SHA-512 fingerprints into a temporary CI test directory; the workflow uses them to test real Forge server startup and inspect the saved preset. These checks do **not** guarantee every road, slab or vegetation placement behaves identically to each standalone mod.
 
+## Coastline ring and north-to-south climate
+
+OmniIsle preserves a **seaward beach outline** around the landmass even when
+Blooming Biosphere, or an optional shore biome, replaces parts of the inner
+coastal climate region. The outer coast keeps the player's enabled native
+sand, snowy beach or stony-shore biome; farther inland along the same shore,
+automatically selected Tidepools may still appear. This is applied to real
+quart-biome generation and represented in the editor's outer coastline pixel.
+The underlying island geometry, water threshold and coastline mask are unchanged.
+
+The shared editor-preview and worldgen climate now use a clearer north-to-south
+temperature progression: cold snowy/taiga climates in the north, temperate
+forests/plains/swamps between, and a predominantly desert/badlands climate
+in the far south. Climate boundaries still curve organically and respect
+per-world enabled/disabled biomes: a player who disables Desert will not
+have Desert silently reintroduced. Mod-only land palettes retain their
+separate compatibility limitations and may use broader stand-in regions.
+
+A new world is required to see the new biome distribution in newly generated
+chunks; existing world terrain is not rewritten.
+
 ## Organic modded biomes and automatic Overworld replacements
 
 Optional modded biomes now use **larger, approximately 1,100-block warped
