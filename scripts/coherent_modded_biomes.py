@@ -209,6 +209,9 @@ public final class AutomaticOverworldBiomes {
 
     public static void apply(IslandDraft draft) {
         discover().forEach((category, ids) -> {
+            // A replacement inherits the user's enabled vanilla climate slots.
+            // Do not resurrect a fully disabled native terrain category.
+            if (draft.enabledBiomes(category).isEmpty()) return;
             // Idempotent; don't flip an already-active checkbox OFF.
             for (String id : ids) if (!draft.isCustomBiomeEnabled(id, category))
                 draft.toggleCustomBiome(id, category);
