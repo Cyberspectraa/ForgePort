@@ -74,6 +74,7 @@ jobs:
               assert "com/hack337/omniisle/worldgen/ModdedBiomePatches.class" in names
               assert "com/hack337/omniisle/worldgen/AutomaticBiomeReplacements.class" in names
               assert "com/hack337/omniisle/worldgen/CoastalBiomeBands.class" in names
+              assert "com/hack337/omniisle/worldgen/AquamiraeNorthOcean.class" in names
               assert "com/hack337/omniisle/client/AutomaticOverworldBiomes.class" in names
               assert "com/hack337/omniisle/worldgen/OmniFeatureCycleRecovery.class" in names
               assert "com/hack337/omniisle/mixin/client/ChunkGeneratorFeatureCycleMixin.class" in names
@@ -300,6 +301,15 @@ jobs:
                                       != BiomePreview.Category.SHORE)
                                   throw new AssertionError("Island beach band was lost in the preview");
                               System.out.println("OMNI_SMOKE_BEACH_AND_LATITUDE_OK");
+                              // The north sea is eligible for Aquamirae's
+                              // existing #aquamirae:ice_maze frozen-ocean tag,
+                              // but neither inland land nor the beach is touched.
+                              if (!com.hack337.omniisle.worldgen.AquamiraeNorthOcean.isNorthernMazeSea(-0.68,-2100)
+                                      || !com.hack337.omniisle.worldgen.AquamiraeNorthOcean.isNorthernMazeSea(-0.35,-1800)
+                                      || com.hack337.omniisle.worldgen.AquamiraeNorthOcean.isNorthernMazeSea(0.0,-2100)
+                                      || com.hack337.omniisle.worldgen.AquamiraeNorthOcean.isNorthernMazeSea(-0.68,1800))
+                                  throw new AssertionError("Aquamirae frozen ocean must stay offshore and north");
+                              System.out.println("OMNI_SMOKE_AQUAMIRAE_NORTH_ZONE_OK");
                               // Every explicitly included replacement gets one broad
                               // native region when enough native slots are enabled.
                               var baseIds = automatic.enabledBiomes(BiomePreview.Category.LAND)
@@ -613,6 +623,7 @@ jobs:
           PY
           grep -Fq 'OMNI_SMOKE_NATIVE_REGION_MOD_REPLACEMENT_OK' client-smoke.log
           grep -Fq 'OMNI_SMOKE_BEACH_AND_LATITUDE_OK' client-smoke.log
+          grep -Fq 'OMNI_SMOKE_AQUAMIRAE_NORTH_ZONE_OK' client-smoke.log
           grep -Fq 'OMNI_SMOKE_AUTOMATIC_OVERWORLD_BIOMES_OK' client-smoke.log
           grep -Fq 'OMNI_SMOKE_FEATURE_CYCLE_REPAIRED' client-smoke.log
           grep -Fq 'OMNI_SMOKE_WORLD_GENERATOR_FEATURES_SORTED' client-smoke.log
@@ -743,6 +754,46 @@ jobs:
           print('Confirmed OmniIsle preset remains active WITH Blooming Biosphere worldgen enabled')
           PY
           echo 'Real Forge server generated OmniIsle with Blooming Biosphere, RoadWeaver, Terrain Slabs, Smooth Steps and TerraBlender'
+      - name: Test real Aquamirae 6.4.0 northern Ice Maze ocean on Forge
+        run: |
+          # Version used in the player's modpack; Aquamirae owns maze walls,
+          # decorations and pirate structures. Never package these third-party JARs.
+          python3 scripts/verify_aquamirae_compat.py prod-server/mods
+          mkdir -p prod-server/omni-aquamirae-north/datapacks
+          cp run/omni-smoke-datapacks/omniisle-generated.zip prod-server/omni-aquamirae-north/datapacks/
+          # Request an ocean chunk north of the island in the actual world so
+          # the Ice Maze biome-selection path is exercised, not just mod loading.
+          python3 - <<'PY'
+          import pathlib, zipfile
+          output=pathlib.Path('prod-server/omni-aquamirae-north/datapacks/omni-aqua-smoke.zip')
+          with zipfile.ZipFile(output, 'w') as z:
+              z.writestr('pack.mcmeta', '{"pack":{"pack_format":15,"description":"Aquamirae Ice Maze CI generation probe"}}')
+              z.writestr('data/minecraft/tags/functions/load.json','{"values":["omnitest:check_north_ocean"]}')
+              z.writestr('data/omnitest/functions/check_north_ocean.mcfunction',
+                         'forceload add 0 -2448\n')
+          print('Scheduled remote northern ocean generation',output)
+          PY
+          printf '\nlevel-name=omni-aquamirae-north\nserver-port=25570\nview-distance=3\nsimulation-distance=3\n' >> prod-server/server.properties
+          (
+            cd prod-server
+            timeout 220s bash ./run.sh nogui > ../prod-aquamirae.log 2>&1
+          ) &
+          pid=$!
+          ready=0
+          for n in $(seq 1 110); do
+            if grep -Eq 'Done \([0-9.]' prod-aquamirae.log 2>/dev/null; then ready=1; break; fi
+            if ! kill -0 "$pid" 2>/dev/null; then break; fi
+            sleep 2
+          done
+          # Allow the datapack function to forceload/generate the ocean chunk.
+          if [ "$ready" = 1 ]; then sleep 12; fi
+          kill "$pid" 2>/dev/null || true
+          wait "$pid" 2>/dev/null || true
+          tail -n 105 prod-aquamirae.log
+          test "$ready" = 1
+          grep -Fq 'OmniIsle reserved northern frozen ocean for Aquamirae Ice Maze' prod-aquamirae.log
+          if grep -E 'Feature order cycle found|MixinApplyError|InvalidInjectionException|Errors in currently selected datapacks|Exception generating new chunk' prod-aquamirae.log; then exit 1; fi
+          echo 'Actual Aquamirae 6.4.0 + Obscure API 18 + five modpack additions generated northern frozen ocean'
       - name: Verify Polytone client integration metadata
         run: |
           mkdir -p polytone-client-test
@@ -767,6 +818,7 @@ jobs:
             prod-server.log
             prod-terrablender.log
             prod-5mods.log
+            prod-aquamirae.log
           if-no-files-found: ignore
       - name: Upload reproducible full source
         if: success()
@@ -787,6 +839,8 @@ jobs:
             scripts/automatic_biome_replacements.py
             scripts/coherent_modded_biomes.py
             scripts/coastal_latitude.py
+            scripts/aquamirae_northern_ocean.py
+            scripts/verify_aquamirae_compat.py
             scripts/verify_modpack_compat.py
             tools/restore_worldgen.py
       - name: Upload project sources on failure
