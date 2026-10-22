@@ -118,6 +118,29 @@ patch_once("client/WorldPackBuilder.java",
                 && (generic || state.isAnyRequiredBiomeEnabled(definition.biomes))
                 && (!definition.deepDark || state.isBiomeEnabled(BiomePreview.Type.DEEP_DARK));""")
 
+# Selected custom biomes generate in the Overworld but some external mods
+# (e.g. Terrain Slabs 3.1.1) only inject their features into biomes carrying
+# #minecraft:is_overworld. Datapack-defined biomes such as Blooming Biosphere's
+# seven new biomes do not necessarily provide this standard tag themselves.
+# Extend that tag *inside this world's generated OmniIsle datapack* only for
+# custom biomes deliberately enabled by its editor. Never modify global mod
+# registry data, other dimensions' generators or disabled biomes.
+patch_once("client/WorldPackBuilder.java",
+    """            exportStructureSets(zip, state, mask, halfSpan);""",
+    """            exportStructureSets(zip, state, mask, halfSpan);
+            // Ensure Overworld-targeted Forge biome modifiers from other mods
+            // include the enabled custom biomes (Terrain Slabs, etc.).
+            JsonArray overworldCustomBiomes = new JsonArray();
+            for (BiomePreview.Category category : BiomePreview.Category.values())
+                state.customBiomeIds(category).forEach(overworldCustomBiomes::add);
+            if (overworldCustomBiomes.size() > 0) {
+                JsonObject overworldTag = new JsonObject();
+                overworldTag.addProperty("replace", false);
+                overworldTag.add("values", overworldCustomBiomes);
+                putEntry(zip, "data/minecraft/tags/worldgen/biome/is_overworld.json",
+                    GSON.toJson(overworldTag) + "\\n");
+            }""")
+
 # Generated terrain, preview and structure compatibility share the same stable
 # biome-patch choice. Each enabled mod biome gets an organic-looking patch of
 # land/ocean/etc without overriding vanilla palette definitions.
