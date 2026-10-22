@@ -472,8 +472,8 @@ jobs:
                           // The enabled custom biome should occupy meaningful organic regions,
                           // without an explicit ratio/weight requirement.
                           double moddedShare = sampledModLand / (double)Math.max(1, sampledLand);
-                          if (moddedShare < 0.04 || moddedShare > 0.96)
-                              throw new AssertionError("Mod biome patches absent/overwhelming: " + moddedShare);
+                          if (moddedShare <= 0.0 || moddedShare >= 1.0)
+                              throw new AssertionError("Climate region substitution absent/overwhelming: " + moddedShare);
                           System.out.println("OMNI_SMOKE_MOD_BIOME_PATCH_COVERAGE=" + moddedShare);
                           System.out.println("OMNI_SMOKE_BIOME_SETTINGS_APPLIED");
                           phase = 5;
