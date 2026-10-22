@@ -615,6 +615,48 @@ jobs:
           grep -Fq 'OmniIsle TerraBlender biome surface rules activated' prod-terrablender.log
           if grep -E 'Failed to load|Errors in currently selected datapacks|MixinApplyError|InvalidInjectionException' prod-terrablender.log; then exit 1; fi
           echo 'TerraBlender 3.0.1.7 loaded alongside OmniIsle and registered surface rules on the real server'
+      - name: Test uploaded 1.20.1 worldgen mods on OmniIsle production server
+        run: |
+          # Install exact (SHA-512 matched) public copies of the user's uploaded
+          # Terrain Slabs 3.1.1, Smooth Steps 1.1.0, RoadWeaver 2.1.1 and
+          # Blooming Biosphere 1.1.0, plus required Architectury 9.2.14.
+          # Polytone is client-only, so it is verified independently below.
+          python3 scripts/verify_modpack_compat.py prod-server/mods
+          printf '\nlevel-name=omni-five-mod-compat\nserver-port=25569\nview-distance=3\nsimulation-distance=3\n' >> prod-server/server.properties
+          (
+            cd prod-server
+            timeout 240s bash ./run.sh nogui > ../prod-5mods.log 2>&1
+          ) &
+          pid=$!
+          ready=0
+          for n in $(seq 1 120); do
+            if grep -Eq 'Done \([0-9.]' prod-5mods.log 2>/dev/null; then ready=1; break; fi
+            if ! kill -0 "$pid" 2>/dev/null; then break; fi
+            sleep 2
+          done
+          kill "$pid" 2>/dev/null || true
+          wait "$pid" 2>/dev/null || true
+          tail -n 100 prod-5mods.log
+          if [ "$ready" != 1 ]; then
+            echo "Forge could not generate OmniIsle with uploaded biome, road and slab mods"
+            exit 1
+          fi
+          if grep -E 'Feature order cycle found|MixinApplyError|InvalidInjectionException|Errors in currently selected datapacks' prod-5mods.log; then exit 1; fi
+          echo 'Real Forge server generated OmniIsle with Blooming Biosphere, RoadWeaver, Terrain Slabs, Smooth Steps and TerraBlender'
+      - name: Verify Polytone client integration metadata
+        run: |
+          mkdir -p polytone-client-test
+          python3 scripts/verify_modpack_compat.py polytone-client-test --client
+          python3 - <<'PY'
+          import pathlib,zipfile
+          path=pathlib.Path('polytone-client-test/polytone-1.20-3.5.26.jar')
+          with zipfile.ZipFile(path) as z:
+              metadata=z.read('META-INF/mods.toml').decode()
+              assert 'side = "CLIENT"' in metadata
+              assert 'polytone-common.mixins.json' in z.namelist()
+              assert 'net/mehvahdjukaar/polytone/biome/BiomeEffectModifier.class' in z.namelist()
+          print("User's Polytone JAR validated; visual effects require in-game client testing")
+          PY
       - name: Upload production server log
         if: always()
         uses: actions/upload-artifact@v4
@@ -624,6 +666,7 @@ jobs:
             prod-installer.log
             prod-server.log
             prod-terrablender.log
+            prod-5mods.log
           if-no-files-found: ignore
       - name: Upload reproducible full source
         if: success()
@@ -641,6 +684,7 @@ jobs:
             scripts/modded_biomes.py
             scripts/biome_generation.py
             scripts/feature_cycle_compat.py
+            scripts/verify_modpack_compat.py
             tools/restore_worldgen.py
       - name: Upload project sources on failure
         if: failure()
