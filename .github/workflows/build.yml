@@ -642,6 +642,19 @@ jobs:
             exit 1
           fi
           if grep -E 'Feature order cycle found|MixinApplyError|InvalidInjectionException|Errors in currently selected datapacks' prod-5mods.log; then exit 1; fi
+          python3 - <<'PY'
+          import gzip,pathlib
+          level=pathlib.Path('prod-server/omni-five-mod-compat/level.dat')
+          assert level.is_file(), 'Five-mod integration world did not save level.dat'
+          raw=gzip.decompress(level.read_bytes())
+          # Blooming Biosphere ships a competing minecraft:overworld dimension.
+          # The actual world must still use OmniIsle's saved biome source.
+          assert b'omniisle:island_biomes' in raw, (
+              'Blooming Biosphere may have replaced OmniIsle world generation')
+          assert b'mod:mr_blooming_biosphere' in raw, (
+              'Blooming Biosphere datapack was not enabled in integrated test world')
+          print('Confirmed OmniIsle preset remains active WITH Blooming Biosphere worldgen enabled')
+          PY
           echo 'Real Forge server generated OmniIsle with Blooming Biosphere, RoadWeaver, Terrain Slabs, Smooth Steps and TerraBlender'
       - name: Verify Polytone client integration metadata
         run: |
