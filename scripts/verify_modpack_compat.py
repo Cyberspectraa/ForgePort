@@ -73,7 +73,16 @@ def resolve_file(filename, sha512, slug):
                 metadata = release
                 break
     if metadata is None:
-        raise RuntimeError(f"No publicly verifiable exact matching release for {filename} (SHA-512={sha512}).")
+        # Some user-uploaded CurseForge artifacts differ from the Modrinth
+        # release for the same nominal version. Only use known official CF
+        # file IDs, then check the exact uploaded SHA-512 after downloading.
+        curseforge_files = {"roadweaver": 7517344, "polytone": 8042889}
+        file_id = curseforge_files.get(slug)
+        if file_id is None:
+            raise RuntimeError(f"No publicly verifiable exact matching release for {filename} (SHA-512={sha512}).")
+        from urllib.parse import quote
+        return (f"https://mediafilez.forgecdn.net/files/{file_id // 1000}/"
+                f"{file_id % 1000}/{quote(filename)}")
     candidates = [f for f in metadata["files"]
                   if f.get("hashes", {}).get("sha512") == sha512]
     if len(candidates) != 1:
