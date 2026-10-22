@@ -66,6 +66,18 @@ For mods using **TerraBlender 3.x on Forge 1.20.1**, OmniIsle now marks its own 
 
 Surface rules are just one aspect of a biome's appearance. Mods that use a different surface-rule system, rely on their own terrain generator, require custom dimension logic, or use features with special placement predicates may still need an explicit adapter. In particular, the modded biome's **trees and configured features come from the original mod**, not from the name shown in F3. For a biome that still looks incorrect, capture the exact F3 `Biome: namespace:id`, the biome-owning mod and version, and a screenshot of the blocks and trees so its actual worldgen assets can be compared with OmniIsle.
 
+## Compatibility with the October 2026 five-mod test set
+
+OmniIsle was evaluated against these exact user-provided Forge 1.20.1 JARs:
+
+* **Polytone 1.20-3.5.26:** Client-only biome colours and resource-pack visual effects. No terrain-generator adapter is appropriate; visual behaviour must be checked in-game with the user's actual resource packs.
+* **Terrain Slabs 3.1.1:** Adds the `terrain_slabs:slab_feature_placed` feature to `#minecraft:is_overworld` at the `underground_structures` generation step. OmniIsle now tags each **enabled modded biome** as Overworld within the generated, world-specific datapack, allowing Terrain Slabs and similarly tagged Forge biome modifiers to target it. This never enables a biome the player disabled.
+* **Smooth Steps 1.1.0:** Alters movement and camera handling, not biome or chunk generation; Architectury API 9.2.14 is required. It is not an alternative to Terrain Slabs.
+* **RoadWeaver 2.1.1-1.20.1:** Adds highway and road placed features at `top_layer_modification`. Registered roads can execute in OmniIsle's Overworld; bridges, road targeting and performance still need in-game exploration of populated islands. Roads are not limited to the original fixed vanilla structure set.
+* **Blooming Biosphere 1.1.0:** Replaces numerous `minecraft:` biome definitions, adds seven `blooming_biosphere:` biomes, and includes a competing `minecraft:overworld` dimension/noise definition. Vanilla biome **features** are available through their registries; new biomes are opt-in from **Mods** (e.g., Tidepools should go in Shore). OmniIsle's custom island noise/world preset must remain selected. Blooming Biosphere's own biome distribution and terrain noise are not transplanted wholesale because that would destroy OmniIsle's island layout.
+
+Run `scripts/verify_modpack_compat.py` to download matching public mod JARs with their uploaded SHA-512 fingerprints into a temporary CI test directory; the workflow uses them to test real Forge server startup and inspect the saved preset. These checks do **not** guarantee every road, slab or vegetation placement behaves identically to each standalone mod.
+
 ## Cross-mod compatibility boundaries
 
 * Registered biomes from installed datapacks/mods are found in the worldgen biome registry and available for opt-in. The biome's owning mod or datapack **must remain installed** for the saved world to load.
