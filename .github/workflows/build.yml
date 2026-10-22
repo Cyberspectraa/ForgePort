@@ -72,6 +72,7 @@ jobs:
               assert "com/hack337/omniisle/mixin/client/TerraBlenderSurfaceMixin.class" in names
               assert "com/hack337/omniisle/client/ModdedBiomeScreen.class" in names
               assert "com/hack337/omniisle/worldgen/ModdedBiomePatches.class" in names
+              assert "com/hack337/omniisle/worldgen/AutomaticBiomeReplacements.class" in names
               assert "com/hack337/omniisle/client/AutomaticOverworldBiomes.class" in names
               assert "com/hack337/omniisle/worldgen/OmniFeatureCycleRecovery.class" in names
               assert "com/hack337/omniisle/mixin/client/ChunkGeneratorFeatureCycleMixin.class" in names
@@ -759,6 +760,7 @@ jobs:
             scripts/modded_biomes.py
             scripts/biome_generation.py
             scripts/feature_cycle_compat.py
+            scripts/automatic_biome_replacements.py
             scripts/coherent_modded_biomes.py
             scripts/verify_modpack_compat.py
             tools/restore_worldgen.py
