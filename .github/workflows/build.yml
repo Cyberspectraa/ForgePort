@@ -72,6 +72,7 @@ jobs:
               assert "com/hack337/omniisle/mixin/client/TerraBlenderSurfaceMixin.class" in names
               assert "com/hack337/omniisle/client/ModdedBiomeScreen.class" in names
               assert "com/hack337/omniisle/worldgen/ModdedBiomePatches.class" in names
+              assert "com/hack337/omniisle/client/AutomaticOverworldBiomes.class" in names
               assert "com/hack337/omniisle/worldgen/OmniFeatureCycleRecovery.class" in names
               assert "com/hack337/omniisle/mixin/client/ChunkGeneratorFeatureCycleMixin.class" in names
               assert "com/hack337/omniisle/worldgen/BiomeShareSampler.class" not in names
@@ -127,6 +128,9 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq xvfb libgl1-mesa-dri libglx-mesa0 > /dev/null
+          # Load the user's exact Blooming Biosphere datapack while opening
+          # the real world editor so auto-replacement recognition is exercised.
+          python3 scripts/verify_modpack_compat.py run/mods --only blooming-biosphere-1.1.0-1.20.1.jar --skip-architectury
           # Test-only datapack biome under a separate namespace, loaded by the dev client.
           mkdir -p src/main/resources/data/omnitest/worldgen/biome
           cat > src/main/resources/data/omnitest/worldgen/biome/glowing_grove.json <<'JSON'
@@ -244,8 +248,37 @@ jobs:
                                   throw new AssertionError("Could not select installed mod biome");
                               if (!restricted.enabledBiomeIds(BiomePreview.Category.LAND).contains("omnitest:glowing_grove"))
                                   throw new AssertionError("Mod biome missing from editor selection");
-                              // All installed mod biomes should have fair, deterministic regions,
-                              // with NO percentage configuration or custom weight codec.
+                              var auto = com.hack337.omniisle.client.AutomaticOverworldBiomes.discover();
+                              if (!auto.get(BiomePreview.Category.LAND).contains("blooming_biosphere:rainforest")
+                                      || !auto.get(BiomePreview.Category.SHORE).contains("blooming_biosphere:tidepools"))
+                                  throw new AssertionError("Blooming Biosphere explicit Overworld biomes not imported");
+                              IslandDraft automatic = new IslandDraft();
+                              com.hack337.omniisle.client.AutomaticOverworldBiomes.apply(automatic);
+                              if (!automatic.enabledBiomeIds(BiomePreview.Category.LAND).contains("blooming_biosphere:rainforest")
+                                      || !automatic.enabledBiomeIds(BiomePreview.Category.SHORE).contains("blooming_biosphere:tidepools"))
+                                  throw new AssertionError("Overworld biome replacements require manual checkbox");
+                              if (!automatic.toggleCustomBiome("iceandfire:dread_forest", BiomePreview.Category.LAND))
+                                  throw new AssertionError("Separate dimension biome should still be opt-in");
+                              java.util.List<String> allowed = java.util.List.of(
+                                  "blooming_biosphere:rainforest", "blooming_biosphere:oak_woodland");
+                              for (String nativeId : java.util.List.of("minecraft:forest", "minecraft:plains",
+                                      "minecraft:taiga", "minecraft:dark_forest")) {
+                                  int first = com.hack337.omniisle.worldgen.ModdedBiomePatches.forBase(
+                                      nativeId, allowed, 9876L, 0);
+                                  for (int sample = 0; sample < 200; sample++) {
+                                      if (first != com.hack337.omniisle.worldgen.ModdedBiomePatches.forBase(
+                                              nativeId, allowed, 9876L, 0))
+                                          throw new AssertionError("Extra spatial boundary inside native biome");
+                                  }
+                              }
+                              if (com.hack337.omniisle.worldgen.ModdedBiomePatches.forBase(
+                                      "minecraft:snowy_plains", java.util.List.of("blooming_biosphere:rainforest"),
+                                      1234L, 0) != -1)
+                                  throw new AssertionError("Hot rainforest may not replace snowy plains");
+                              System.out.println("OMNI_SMOKE_NATIVE_REGION_MOD_REPLACEMENT_OK");
+                              System.out.println("OMNI_SMOKE_AUTOMATIC_OVERWORLD_BIOMES_OK");
+                              // Legacy random selection test validates deterministic bounds only.
+                              // Real world sampling above uses native climate regions.
                               for (int count : new int[] {1, 2, 4}) {
                                   int[] appearances = new int[count + 1];
                                   int contiguous = 0, sampled = 0;
@@ -540,6 +573,8 @@ jobs:
               assert 'biome_weights' not in source
               print('Verified mod-only land biome in exported world preset')
           PY
+          grep -Fq 'OMNI_SMOKE_NATIVE_REGION_MOD_REPLACEMENT_OK' client-smoke.log
+          grep -Fq 'OMNI_SMOKE_AUTOMATIC_OVERWORLD_BIOMES_OK' client-smoke.log
           grep -Fq 'OMNI_SMOKE_FEATURE_CYCLE_REPAIRED' client-smoke.log
           grep -Fq 'OMNI_SMOKE_WORLD_GENERATOR_FEATURES_SORTED' client-smoke.log
           grep -Fq 'Resolved incompatible modded biome feature order for OmniIsle' client-smoke.log
@@ -710,6 +745,7 @@ jobs:
             scripts/modded_biomes.py
             scripts/biome_generation.py
             scripts/feature_cycle_compat.py
+            scripts/coherent_modded_biomes.py
             scripts/verify_modpack_compat.py
             tools/restore_worldgen.py
       - name: Upload project sources on failure
