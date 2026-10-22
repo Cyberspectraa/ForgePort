@@ -276,6 +276,20 @@ jobs:
                                       1234L, 0) != -1)
                                   throw new AssertionError("Hot rainforest may not replace snowy plains");
                               System.out.println("OMNI_SMOKE_NATIVE_REGION_MOD_REPLACEMENT_OK");
+                              // Every explicitly included replacement gets one broad
+                              // native region when enough native slots are enabled.
+                              var baseIds = automatic.enabledBiomes(BiomePreview.Category.LAND)
+                                  .stream().map(BiomePreview.Type::biomeId).toList();
+                              var selectedIds = automatic.customBiomeIds(BiomePreview.Category.LAND);
+                              for (int candidate = 0; candidate < selectedIds.size(); candidate++) {
+                                  final int selected = candidate;
+                                  boolean placed = baseIds.stream().anyMatch(nativeId ->
+                                      com.hack337.omniisle.worldgen.ModdedBiomePatches.forNativeRegion(
+                                          nativeId, baseIds, selectedIds, automatic.biomeSeed(), 0) == selected);
+                                  if (!placed)
+                                      throw new AssertionError("Auto biome received no native climate region: "
+                                          + selectedIds.get(candidate));
+                              }
                               System.out.println("OMNI_SMOKE_AUTOMATIC_OVERWORLD_BIOMES_OK");
                               // Legacy random selection test validates deterministic bounds only.
                               // Real world sampling above uses native climate regions.
@@ -450,8 +464,8 @@ jobs:
                                           String id = biome.unwrapKey().orElseThrow().location().toString();
                                           if (!possible.contains(id))
                                               throw new AssertionError("Biome selector returned disabled biome: " + id);
+                                          if (!id.startsWith("minecraft:")) sawModdedBiome = true;
                                           if (id.equals("omnitest:glowing_grove")) {
-                                              sawModdedBiome = true;
                                               // Verify we receive the biome's actual registered decoration
                                               // data, not only the biome's debug-screen identifier.
                                               int features = biome.value().getGenerationSettings().features()
@@ -461,7 +475,7 @@ jobs:
                                           }
                                           if (continent == 0.6 && y == 64) {
                                               sampledLand++;
-                                              if (id.equals("omnitest:glowing_grove")) sampledModLand++;
+                                              if (!id.startsWith("minecraft:")) sampledModLand++;
                                           }
                                       }
                                   }
