@@ -23,6 +23,15 @@ import net.minecraftforge.fml.ModList;
  */
 public final class AquamiraeNorthOcean {
     private AquamiraeNorthOcean() {}
+    private static final java.util.concurrent.atomic.AtomicBoolean REPORTED =
+        new java.util.concurrent.atomic.AtomicBoolean();
+
+    public static void reportSelected(String biome) {
+        if (REPORTED.compareAndSet(false, true)) {
+            org.slf4j.LoggerFactory.getLogger("OmniIsle").info(
+                "OmniIsle reserved northern frozen ocean for Aquamirae Ice Maze: {}", biome);
+        }
+    }
     public static boolean isNorthernMazeSea(double continentalness, int worldZ) {
         return continentalness < -0.30 && worldZ <= -700;
     }
@@ -50,8 +59,10 @@ patch_once("worldgen/OmniBiomeSource.java",
                     "minecraft:deep_frozen_ocean"}) {
                 for (Holder<Biome> candidate : enabledOceanBiomes) {
                     if (candidate.unwrapKey().map(key ->
-                            key.location().toString().equals(target)).orElse(false))
+                            key.location().toString().equals(target)).orElse(false)) {
+                        AquamiraeNorthOcean.reportSelected(target);
                         return candidate;
+                    }
                 }
             }
         }
