@@ -32,11 +32,11 @@ public final class AutomaticBiomeReplacements {
     // multi_noise climate points and vanilla biome equivalents.
     private static final Map<String, String> BLOOMING = Map.ofEntries(
         Map.entry("minecraft:forest", "blooming_biosphere:oak_woodland"),
-        Map.entry("minecraft:birch_forest", "blooming_biosphere:autumnal_forest"),
+        Map.entry("minecraft:taiga", "blooming_biosphere:autumnal_forest"),
         Map.entry("minecraft:swamp", "blooming_biosphere:marsh"),
         Map.entry("minecraft:jungle", "blooming_biosphere:rainforest"),
         Map.entry("minecraft:savanna", "blooming_biosphere:chaparral"),
-        Map.entry("minecraft:cherry_grove", "blooming_biosphere:snowy_cherry_grove"),
+        Map.entry("minecraft:grove", "blooming_biosphere:snowy_cherry_grove"),
         Map.entry("minecraft:beach", "blooming_biosphere:tidepools")
     );
 
