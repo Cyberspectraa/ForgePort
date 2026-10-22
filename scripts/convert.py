@@ -419,6 +419,10 @@ exec(compile(coherent_patch_file.read_text(encoding="utf-8"), str(coherent_patch
 coast_patch_file=Path("scripts/coastal_latitude.py")
 exec(compile(coast_patch_file.read_text(encoding="utf-8"), str(coast_patch_file), "exec"))
 
+# Keep Aquamirae frozen-ocean Ice Maze zones off the northern shoreline.
+aquamirae_patch_file=Path("scripts/aquamirae_northern_ocean.py")
+exec(compile(aquamirae_patch_file.read_text(encoding="utf-8"), str(aquamirae_patch_file), "exec"))
+
 # Conflict-safe feature sequencing for mixed vanilla/modded OmniIsle biome palettes.
 feature_cycle_patch_file=Path("scripts/feature_cycle_compat.py")
 exec(compile(feature_cycle_patch_file.read_text(encoding="utf-8"), str(feature_cycle_patch_file), "exec"))
