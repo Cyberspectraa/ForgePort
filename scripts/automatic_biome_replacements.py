@@ -36,7 +36,7 @@ public final class AutomaticBiomeReplacements {
         Map.entry("minecraft:swamp", "blooming_biosphere:marsh"),
         Map.entry("minecraft:jungle", "blooming_biosphere:rainforest"),
         Map.entry("minecraft:savanna", "blooming_biosphere:chaparral"),
-        Map.entry("minecraft:grove", "blooming_biosphere:snowy_cherry_grove"),
+        Map.entry("minecraft:snowy_plains", "blooming_biosphere:snowy_cherry_grove"),
         Map.entry("minecraft:beach", "blooming_biosphere:tidepools")
     );
 
