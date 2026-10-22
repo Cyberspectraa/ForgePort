@@ -507,6 +507,11 @@ jobs:
                   print('Verified disabled biome filtered:', field, disabled)
               assert 'minecraft:plains' in biome_source['land_biomes'], 'Stable climate palette changed'
               assert 'omnitest:glowing_grove' in biome_source['enabled_land_biomes'], 'Selected modded biome was not exported'
+              overworld=json.loads(z.read('data/minecraft/tags/worldgen/biome/is_overworld.json'))
+              assert overworld['replace'] is False
+              assert {'omnitest:glowing_grove','omnitest:feature_cycle_a','omnitest:feature_cycle_b'}.issubset(set(overworld['values']))
+              assert 'minecraft:plains' not in overworld['values'], 'Disabled vanilla biome added to overworld tag'
+              print('Selected custom biomes added to Overworld feature tags for Terrain Slabs')
               structure=json.loads(z.read('data/minecraft/worldgen/structure_set/desert_pyramids.json'))
               assert structure['placement']['enabled'] is False, 'Structure still enabled after required biome disabled'
               print('Verified custom biome export and biome-gated vanilla structure')
