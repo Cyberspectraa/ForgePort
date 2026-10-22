@@ -48,7 +48,7 @@ patches.write_text("""package com.hack337.omniisle.worldgen;
  */
 public final class ModdedBiomePatches {
     private ModdedBiomePatches() {}
-    private static final int CELL_SIZE = 310;
+    private static final int CELL_SIZE = 1100;
 
     /** -1 leaves the existing vanilla climate biome in place. */
     public static int index(int x, int z, long seed, int count, int category) {
