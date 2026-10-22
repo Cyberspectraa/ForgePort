@@ -128,8 +128,16 @@ public final class ModdedBiomePatches {
     /** Retained for mod-only categories: the original climate patch owns them. */
     public static int modOnlyIndex(int x, int z, long seed, int count, int category) {
         if (count <= 0) return -1;
-        return (int)Math.floorMod(scramble(seed ^ ((long)x / 768) * 0x9e3779b97f4a7c15L
-            ^ ((long)z / 768) * 0xc2b2ae3d27d4eb4fL ^ category), count);
+        // With every native biome disabled there are no vanilla climate
+        // regions left to reuse. Use MUCH broader, gently warped regions
+        // instead of the previous 310-block checkerboard.
+        double bendX = 210.0 * Math.sin(z / 1200.0 + (seed & 65535) * 0.0001);
+        double bendZ = 210.0 * Math.sin(x / 1300.0 - (seed & 65535) * 0.00012);
+        int cellX = (int)Math.floor((x + bendX) / 1500.0);
+        int cellZ = (int)Math.floor((z + bendZ) / 1500.0);
+        long hash = scramble(seed ^ ((long)cellX * 0x9e3779b97f4a7c15L)
+            ^ ((long)cellZ * 0xc2b2ae3d27d4eb4fL) ^ category);
+        return (int)Math.floorMod(hash, count);
     }
 
     // Compatibility helper for saved older previews and historical tests.
@@ -171,7 +179,11 @@ patch_once("worldgen/OmniBiomeSource.java",
             case 2 -> enabledOceanBiomes.size() == extra.size();
             case 3 -> enabledRiverBiomes.size() == extra.size();
             default -> enabledCaveBiomes.size() == extra.size();
-        }) return base;
+        }) {
+            int modRegion = ModdedBiomePatches.modOnlyIndex(
+                biomeX << 2, biomeZ << 2, biomeSeed, extra.size(), category);
+            return extra.get(modRegion);
+        }
 
         List<String> ids = extra.stream().map(holder -> holder.unwrapKey()
             .map(key -> key.location().toString()).orElse("")).toList();
@@ -194,11 +206,13 @@ patch_once("client/IslandDraft.java",
             : com.hack337.omniisle.worldgen.ModdedBiomePatches.index(
                 (int)worldX, (int)worldZ, biomeSeed, mods.size(), vanilla.category.ordinal());
         if (index < 0) return vanilla.color;""",
-    """        if (enabledBiomes(vanilla.category).isEmpty()) return vanilla.color;
-        int index = com.hack337.omniisle.worldgen.ModdedBiomePatches.forNativeRegion(
-            vanilla.biomeId(), enabledBiomes(vanilla.category).stream()
-                .map(BiomePreview.Type::biomeId).toList(),
-            java.util.List.copyOf(mods), biomeSeed, vanilla.category.ordinal());
+    """        int index = enabledBiomes(vanilla.category).isEmpty()
+            ? com.hack337.omniisle.worldgen.ModdedBiomePatches.modOnlyIndex(
+                (int)worldX, (int)worldZ, biomeSeed, mods.size(), vanilla.category.ordinal())
+            : com.hack337.omniisle.worldgen.ModdedBiomePatches.forNativeRegion(
+                vanilla.biomeId(), enabledBiomes(vanilla.category).stream()
+                    .map(BiomePreview.Type::biomeId).toList(),
+                java.util.List.copyOf(mods), biomeSeed, vanilla.category.ordinal());
         if (index < 0) return vanilla.color;""")
 
 # A mod that deliberately replaces minecraft:forest via data/minecraft/
