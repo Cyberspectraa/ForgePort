@@ -72,7 +72,7 @@ public final class ModdedBiomePatches {
     public static int index(int x, int z, long seed, int count, int category) {
         if (count <= 0) return -1;
         return Math.floorMod((int)scramble(seed ^ (((long)x / 768) << 32)
-            ^ ((long)z / 768) ^ category), count + 2) - 2;
+            ^ ((long)z / 768) ^ category), count + 1) - 1;
     }
 
     private static long scramble(long n) {
@@ -194,7 +194,8 @@ public final class AutomaticOverworldBiomes {
             }
             EnumMap<BiomePreview.Category, Set<String>> immutable =
                 new EnumMap<>(BiomePreview.Category.class);
-            result.forEach((k, v) -> immutable.put(k, Set.copyOf(v)));
+            result.forEach((k, v) -> immutable.put(k,
+                java.util.Collections.unmodifiableSet(new LinkedHashSet<>(v))));
             cached = Map.copyOf(immutable);
             if (result.values().stream().anyMatch(set -> !set.isEmpty()))
                 LOG.info("Recognized explicitly declared Overworld replacement biomes: {}", result);
