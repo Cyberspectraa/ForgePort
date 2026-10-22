@@ -51,13 +51,26 @@ public final class ModdedBiomePatches {
      * splitting it. In that case native regions remain intact, and the first
      * compatible candidates are used. No tiny synthetic patches are made.
      */
+    private record PaletteKey(List<String> natives, List<String> mods, long seed, int category) {}
+    private static final java.util.concurrent.ConcurrentMap<PaletteKey, java.util.Map<String,Integer>>
+        REGION_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
+
     public static int forNativeRegion(String nativeId, List<String> nativeIds,
             List<String> mods, long seed, int category) {
         if (nativeIds.isEmpty() || mods.isEmpty()) return -1;
+        var key = new PaletteKey(List.copyOf(nativeIds), List.copyOf(mods), seed, category);
+        // Registry holders, enabled masks and biome seed are immutable for a
+        // world generation session; compute the mapping once, not per quart.
+        return REGION_CACHE.computeIfAbsent(key,
+            ignored -> allocateNativeRegions(key.natives(), key.mods(), seed, category))
+            .getOrDefault(nativeId, -1);
+    }
+
+    private static java.util.Map<String,Integer> allocateNativeRegions(
+            List<String> nativeIds, List<String> mods, long seed, int category) {
         java.util.ArrayList<String> natives = new java.util.ArrayList<>(nativeIds);
         natives.removeIf(id -> !id.startsWith("minecraft:"));
         natives.sort(String::compareTo);
-        if (natives.isEmpty()) return -1;
         int[] assignment = new int[natives.size()];
         java.util.Arrays.fill(assignment, -1);
         for (int mod = 0; mod < mods.size(); mod++) {
@@ -70,25 +83,22 @@ public final class ModdedBiomePatches {
                 int nativeClimate = climate(name);
                 if (desired != 0 && nativeClimate != 0 && desired != nativeClimate)
                     continue;
-                // Matching ecological names prefer the appropriate vanilla
-                // climate slot. Common climates win ties over unusual micro
-                // districts like mushroom fields, preserving vanilla specials.
                 long match = 0;
                 String modPath = modId.substring(modId.indexOf(':') + 1);
-                String path = name.substring(name.indexOf(':') + 1);
-                if (contains(modPath, "forest", "woodland") && contains(path, "forest", "birch"))
+                String nativePath = name.substring(name.indexOf(':') + 1);
+                if (contains(modPath, "forest", "woodland") && contains(nativePath, "forest", "birch"))
                     match += 1_000_000L;
-                if (contains(modPath, "snow", "frozen") && contains(path, "snow", "frozen"))
+                if (contains(modPath, "snow", "frozen") && contains(nativePath, "snow", "frozen"))
                     match += 1_000_000L;
-                if (contains(modPath, "rainforest", "tropic") && contains(path, "jungle"))
+                if (contains(modPath, "rainforest", "tropic") && contains(nativePath, "jungle"))
                     match += 1_000_000L;
-                if (contains(modPath, "marsh", "swamp") && contains(path, "swamp"))
+                if (contains(modPath, "marsh", "swamp") && contains(nativePath, "swamp"))
                     match += 1_000_000L;
-                if (contains(modPath, "chaparral", "arid") && contains(path, "savanna", "badlands"))
+                if (contains(modPath, "chaparral", "arid") && contains(nativePath, "savanna", "badlands"))
                     match += 1_000_000L;
-                if (contains(modPath, "tidepool", "shore", "beach") && contains(path, "beach"))
+                if (contains(modPath, "tidepool", "shore", "beach") && contains(nativePath, "beach"))
                     match += 1_000_000L;
-                if (contains(path, "mushroom", "ice_spikes", "deep_dark"))
+                if (contains(nativePath, "mushroom", "ice_spikes", "deep_dark"))
                     match -= 3_000_000L;
                 long tie = Math.floorMod(scramble(seed ^ name.hashCode() * 239017L
                     ^ modId.hashCode() * 451L), 100_000L);
@@ -100,8 +110,10 @@ public final class ModdedBiomePatches {
             }
             if (best >= 0) assignment[best] = mod;
         }
-        int position = natives.indexOf(nativeId);
-        return position >= 0 ? assignment[position] : -1;
+        java.util.Map<String,Integer> allocated = new java.util.HashMap<>();
+        for (int n = 0; n < natives.size(); n++)
+            if (assignment[n] != -1) allocated.put(natives.get(n), assignment[n]);
+        return java.util.Map.copyOf(allocated);
     }
 
     /**
