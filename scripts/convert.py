@@ -415,6 +415,10 @@ exec(compile(automatic_patch_file.read_text(encoding="utf-8"), str(automatic_pat
 coherent_patch_file=Path("scripts/coherent_modded_biomes.py")
 exec(compile(coherent_patch_file.read_text(encoding="utf-8"), str(coherent_patch_file), "exec"))
 
+# Beach protection and coherent north-cold to south-desert climate.
+coast_patch_file=Path("scripts/coastal_latitude.py")
+exec(compile(coast_patch_file.read_text(encoding="utf-8"), str(coast_patch_file), "exec"))
+
 # Conflict-safe feature sequencing for mixed vanilla/modded OmniIsle biome palettes.
 feature_cycle_patch_file=Path("scripts/feature_cycle_compat.py")
 exec(compile(feature_cycle_patch_file.read_text(encoding="utf-8"), str(feature_cycle_patch_file), "exec"))
