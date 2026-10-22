@@ -491,6 +491,9 @@ jobs:
           with zipfile.ZipFile(filtered) as z:
               generated=json.loads(z.read('data/omniisle/worldgen/world_preset/omniisle.json'))
               biome_source=generated['dimensions']['minecraft:overworld']['generator']['biome_source']
+              dimension=json.loads(z.read('data/minecraft/dimension/overworld.json'))
+              assert dimension==generated['dimensions']['minecraft:overworld'], 'World-specific Overworld differs from OmniIsle preset'
+              assert dimension['generator']['biome_source']['type']=='omniisle:island_biomes', 'Biome overhaul replaced OmniIsle'
               assert 'biome_weights' not in biome_source, 'Removed biome percentages are still exported'
               checks={
                   'enabled_land_biomes':'minecraft:plains',
@@ -627,6 +630,11 @@ jobs:
           # Blooming Biosphere 1.1.0, plus required Architectury 9.2.14.
           # Polytone is client-only, so it is verified independently below.
           python3 scripts/verify_modpack_compat.py prod-server/mods
+          # Test a real customized world rather than a bare level-type preset:
+          # Blooming Biosphere adds its own data/minecraft/dimension/overworld.json,
+          # while OmniIsle's editor writes a higher-priority per-world override.
+          mkdir -p prod-server/omni-five-mod-compat/datapacks
+          cp run/omni-smoke-datapacks/omniisle-generated.zip prod-server/omni-five-mod-compat/datapacks/
           printf '\nlevel-name=omni-five-mod-compat\nserver-port=25569\nview-distance=3\nsimulation-distance=3\n' >> prod-server/server.properties
           (
             cd prod-server
